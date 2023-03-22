@@ -8,6 +8,8 @@ const radiusInput = $("radius");
 const realInput = $("real");
 const imaginaryInput = $("imaginary");
 const infoForm = $("info-form");
+const overlay = $("overlay");
+const hideOverlayButton = $("hide-overlay-button");
 
 const ctx = canvas.getContext("2d");
 
@@ -29,7 +31,7 @@ let nList = [];
 let currentDrawId = 0;
 const zoomDebounceTime = navigator.userAgentData.mobile ? 300 : 600;
 
-function loadValues() {
+function loadValuesFromForm() {
   position = [Number(realInput.value), Number(imaginaryInput.value)];
   radius = Number(radiusInput.value);
   rRange = [
@@ -164,7 +166,7 @@ function onZoom(eventPosition, deltaZoom, deltaPosition = [0, 0]) {
   imaginaryInput.value = Number(imaginaryInput.value) + imaginaryDiff;
 
   // update values
-  loadValues();
+  loadValuesFromForm();
 
   // draw after some time without using the mouse wheel
   clearTimeout(zoomDebounceTimer);
@@ -250,9 +252,13 @@ document.addEventListener("touchend", (event) => {
 
 infoForm.addEventListener("submit", (event) => {
   event.preventDefault();
-  loadValues();
+  loadValuesFromForm();
   draw();
 });
 
-loadValues();
+hideOverlayButton.addEventListener("click", () => {
+  overlay.style.display = "none";
+});
+
+loadValuesFromForm();
 draw();
