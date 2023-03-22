@@ -19,9 +19,7 @@ const escapeRadiusSquared = Math.pow(escapeRadius, 2);
 
 const maxIterations = 5000;
 let canvasWidth = document.body.clientWidth;
-let canvasHeight = navigator.userAgent.mobile
-  ? document.body.clientHeight - 100
-  : document.body.clientHeight;
+let canvasHeight = document.body.clientHeight;
 let aspectRatio = canvasWidth / canvasHeight;
 let img;
 
@@ -30,7 +28,7 @@ let zList = [];
 let nList = [];
 
 let currentDrawId = 0;
-const zoomDebounceTime = navigator.userAgentData.mobile ? 300 : 600;
+const zoomDebounceTime = 300;
 
 function loadValuesFromForm() {
   position = [Number(realInput.value), Number(imaginaryInput.value)];
