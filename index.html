@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Mandelbrot</title>
+  </head>
+  <body>
+    <canvas id="canvas" width="0" height="0"> </canvas>
+    <form id="info-form">
+      <table>
+        <tr>
+          <td>Iterations</td>
+          <td id="iterations">100</td>
+        </tr>
+        <tr>
+          <td>Radius</td>
+          <td>
+            <input
+              type="number"
+              step="0.000000000000000001"
+              id="radius"
+              value="2"
+            />
+          </td>
+        </tr>
+        <tr>
+          <td>Center real</td>
+          <td>
+            <input
+              type="number"
+              step="0.000000000000000001"
+              id="real"
+              value="0"
+            />
+          </td>
+        </tr>
+        <tr>
+          <td>Center imaginary</td>
+          <td>
+            <input
+              type="number"
+              step="0.000000000000000001"
+              id="imaginary"
+              value="0"
+            />
+          </td>
+        </tr>
+      </table>
+      <button type="submit">Draw</button>
+    </form>
+  </body>
+  <style>
+    body {
+      margin: 0;
+      width: 100vw;
+      height: 99vh;
+    }
+    body::-webkit-scrollbar {
+      display: none;
+    }
+    #info-form {
+      position: absolute;
+      padding: 10px;
+      margin: 10px;
+      border-radius: 5px;
+      top: 0;
+      left: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: start;
+      background-color: white;
+    }
+  </style>
+  <script src="index.js"></script>
+</html>
