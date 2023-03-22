@@ -16,15 +16,10 @@ const escapeRadiusSquared = Math.pow(escapeRadius, 2);
 
 const maxIterations = 5000;
 let canvasWidth = document.body.clientWidth;
-let canvasHeight = document.body.clientHeight;
+let canvasHeight = navigator.userAgent.mobile
+  ? document.body.clientHeight - 100
+  : document.body.clientHeight;
 let aspectRatio = canvasWidth / canvasHeight;
-let position = [Number(realInput.value), Number(imaginaryInput.value)];
-let radius = Number(radiusInput.value);
-let rRange = [
-  position[0] - radius * aspectRatio,
-  position[0] + radius * aspectRatio,
-];
-let iRange = [position[1] - radius, position[1] + radius];
 let img;
 
 let cList = [];
@@ -32,6 +27,17 @@ let zList = [];
 let nList = [];
 
 let currentDrawId = 0;
+const zoomDebounceTime = navigator.userAgentData.mobile ? 300 : 600;
+
+function loadValues() {
+  position = [Number(realInput.value), Number(imaginaryInput.value)];
+  radius = Number(radiusInput.value);
+  rRange = [
+    position[0] - radius * aspectRatio,
+    position[0] + radius * aspectRatio,
+  ];
+  iRange = [position[1] - radius, position[1] + radius];
+}
 
 function iterateEquation(pixelIndex, iterationAmount, drawId) {
   let zR = zList[pixelIndex][0];
@@ -111,29 +117,28 @@ async function draw() {
   iterationsPerTick = Math.floor(iterationsPerTick * 1.5);
 }
 
-draw();
+let zoomDebounceTimer;
 
-let wheelDebounce;
-
-// mouse wheel
-document.addEventListener("wheel", (event) => {
-  // stop drawing
+function onZoom(eventPosition, deltaZoom, deltaPosition = [0, 0]) {
+  if (deltaZoom < -900) {
+    deltaZoom = -900;
+  }
   currentDrawId++;
 
   // calculate new radius
   const oldRadius = Number(radiusInput.value);
-  radius = oldRadius * (1 + event.deltaY / 1000);
+  radius = oldRadius * (1 + deltaZoom / 1000);
   radiusInput.value = radius;
 
   const realSpan = 2 * oldRadius * aspectRatio;
   const imaginarySpan = 2 * oldRadius;
 
   // calculate new position with mouse position
-  const mousePosition = [event.clientX, event.clientY];
-  const mouseReal = rRange[0] + realSpan * (mousePosition[0] / canvasWidth);
+  const mouseReal = rRange[0] + realSpan * (eventPosition[0] / canvasWidth);
   const mouseImaginary =
-    iRange[0] + imaginarySpan * (mousePosition[1] / canvasHeight);
+    iRange[0] + imaginarySpan * (eventPosition[1] / canvasHeight);
 
+  // calculate new ranges and spans
   const newRRange = [
     position[0] - radius * aspectRatio,
     position[0] + radius * aspectRatio,
@@ -142,32 +147,31 @@ document.addEventListener("wheel", (event) => {
   const newRealSpan = 2 * radius * aspectRatio;
   const newImaginarySpan = 2 * radius;
 
+  // calculate new mouse position with new ranges and spans
   const newMouseReal =
-    newRRange[0] + newRealSpan * (mousePosition[0] / canvasWidth);
+    newRRange[0] +
+    newRealSpan * ((eventPosition[0] - deltaPosition[0]) / canvasWidth);
   const newMouseImaginary =
-    newIRange[0] + newImaginarySpan * (mousePosition[1] / canvasHeight);
+    newIRange[0] +
+    newImaginarySpan * ((eventPosition[1] - deltaPosition[1]) / canvasHeight);
 
+  // calculate difference
   const realDiff = mouseReal - newMouseReal;
   const imaginaryDiff = mouseImaginary - newMouseImaginary;
 
-  // update position
+  // update position with difference
   realInput.value = Number(realInput.value) + realDiff;
   imaginaryInput.value = Number(imaginaryInput.value) + imaginaryDiff;
 
   // update values
-  position = [Number(realInput.value), Number(imaginaryInput.value)];
-  rRange = [
-    position[0] - radius * aspectRatio,
-    position[0] + radius * aspectRatio,
-  ];
-  iRange = [position[1] - radius, position[1] + radius];
+  loadValues();
 
   // draw after some time without using the mouse wheel
-  clearTimeout(wheelDebounce);
-  wheelDebounce = setTimeout(() => {
-    wheelDebounce = null;
+  clearTimeout(zoomDebounceTimer);
+  zoomDebounceTimer = setTimeout(() => {
+    zoomDebounceTimer = null;
     draw();
-  }, 1000);
+  }, zoomDebounceTime);
 
   const zoomFactor = oldRadius / radius;
   ctx.putImageData(img, 0, 0);
@@ -175,8 +179,8 @@ document.addEventListener("wheel", (event) => {
   // get current canvas scale
   const transform = ctx.getTransform();
   const mouseCanvasPosition = [
-    (mousePosition[0] - transform.e) / transform.a,
-    (mousePosition[1] - transform.f) / transform.d,
+    (eventPosition[0] - transform.e) / transform.a,
+    (eventPosition[1] - transform.f) / transform.d,
   ];
 
   // zoom
@@ -184,19 +188,71 @@ document.addEventListener("wheel", (event) => {
 
   const newTransform = ctx.getTransform();
   const newMouseCanvasPosition = [
-    (mousePosition[0] - newTransform.e) / newTransform.a,
-    (mousePosition[1] - newTransform.f) / newTransform.d,
+    (eventPosition[0] - newTransform.e) / newTransform.a,
+    (eventPosition[1] - newTransform.f) / newTransform.d,
   ];
   const translate = [
-    newMouseCanvasPosition[0] - mouseCanvasPosition[0],
-    newMouseCanvasPosition[1] - mouseCanvasPosition[1],
+    newMouseCanvasPosition[0] - mouseCanvasPosition[0] - deltaPosition[0],
+    newMouseCanvasPosition[1] - mouseCanvasPosition[1] - deltaPosition[1],
   ];
   ctx.translate(translate[0], translate[1]);
   ctx.drawImage(canvas, 0, 0);
+}
+
+// mouse wheel
+document.addEventListener("wheel", (event) => {
+  onZoom([event.clientX, event.clientY], event.deltaY);
+});
+
+let lastDistance;
+let lastTouchPosition;
+
+// touchpad
+document.addEventListener("touchmove", (event) => {
+  if (event.touches.length === 2) {
+    const touch1 = event.touches[0];
+    const touch2 = event.touches[1];
+    const touchPosition = [
+      (touch1.clientX + touch2.clientX) / 2,
+      (touch1.clientY + touch2.clientY) / 2,
+    ];
+    const distance =
+      5 *
+      Math.sqrt(
+        Math.pow(touch1.clientX - touch2.clientX, 2) +
+          Math.pow(touch1.clientY - touch2.clientY, 2)
+      );
+    if (lastDistance) {
+      onZoom(
+        [
+          (touch1.clientX + touch2.clientX) / 2,
+          (touch1.clientY + touch2.clientY) / 2,
+        ],
+        lastDistance - distance,
+        lastTouchPosition
+          ? [
+              lastTouchPosition[0] - touchPosition[0],
+              lastTouchPosition[1] - touchPosition[1],
+            ]
+          : [0, 0]
+      );
+    }
+    lastTouchPosition = touchPosition;
+    lastDistance = distance;
+  }
+});
+
+// touch release
+document.addEventListener("touchend", (event) => {
+  lastDistance = null;
+  lastTouchPosition = null;
 });
 
 infoForm.addEventListener("submit", (event) => {
-  console.log("submit");
   event.preventDefault();
+  loadValues();
   draw();
 });
+
+loadValues();
+draw();
