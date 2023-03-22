@@ -10,6 +10,7 @@ const imaginaryInput = $("imaginary");
 const infoForm = $("info-form");
 const overlay = $("overlay");
 const hideOverlayButton = $("hide-overlay-button");
+const resetButton = $("reset-button");
 
 const ctx = canvas.getContext("2d");
 
@@ -258,6 +259,14 @@ infoForm.addEventListener("submit", (event) => {
 
 hideOverlayButton.addEventListener("click", () => {
   overlay.style.display = "none";
+});
+
+resetButton.addEventListener("click", () => {
+  realInput.value = 0;
+  imaginaryInput.value = 0;
+  radiusInput.value = 2;
+  loadValuesFromForm();
+  draw();
 });
 
 loadValuesFromForm();
