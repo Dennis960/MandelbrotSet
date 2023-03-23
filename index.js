@@ -1,26 +1,24 @@
-function $(id) {
-  return document.getElementById(id);
-}
+// html elements
+const radiusInput = new NumberInput("radius");
+const realInput = new NumberInput("real");
+const imaginaryInput = new NumberInput("imaginary");
 
-const canvas = $("canvas");
 const iterationsLabel = $("iterations");
-const radiusInput = $("radius");
-const realInput = $("real");
-const imaginaryInput = $("imaginary");
 const infoForm = $("info-form");
 const overlay = $("overlay");
 const hideOverlayButton = $("hide-overlay-button");
 const resetButton = $("reset-button");
-
+const canvas = $("canvas");
 const ctx = canvas.getContext("2d");
 
+// default values
 const escapeRadius = 10;
 const escapeRadiusSquared = Math.pow(escapeRadius, 2);
 
 const maxIterations = 5000;
-let canvasWidth = document.body.clientWidth;
-let canvasHeight = document.body.clientHeight;
-let aspectRatio = canvasWidth / canvasHeight;
+canvas.width = document.body.clientWidth;
+canvas.height = document.body.clientHeight;
+let aspectRatio = canvas.width / canvas.height;
 let img;
 
 let cList = [];
@@ -28,17 +26,14 @@ let zList = [];
 let nList = [];
 
 let currentDrawId = 0;
-const zoomDebounceTime = 300;
+let zoomDebounceTime = 600;
 
-function loadValuesFromForm() {
-  position = [Number(realInput.value), Number(imaginaryInput.value)];
-  radius = Number(radiusInput.value);
-  rRange = [
-    position[0] - radius * aspectRatio,
-    position[0] + radius * aspectRatio,
-  ];
-  iRange = [position[1] - radius, position[1] + radius];
-}
+// coordinate systems
+const mandelbrotCoordSystem = new CoordSystem(
+  canvas.width / 2,
+  canvas.height / 2,
+  Math.min(canvas.width, canvas.height) / 4
+);
 
 function iterateEquation(pixelIndex, iterationAmount, drawId) {
   let zR = zList[pixelIndex][0];
@@ -64,17 +59,23 @@ function iterateEquation(pixelIndex, iterationAmount, drawId) {
 async function draw() {
   const drawId = ++currentDrawId;
 
-  canvas.width = canvasWidth;
-  canvas.height = canvasHeight;
+  const mandelbrotTopLeft = mandelbrotCoordSystem.fromViewport(0, 0);
+  const mandelbrotBottomRight = mandelbrotCoordSystem.fromViewport(
+    canvas.width,
+    canvas.height
+  );
 
-  let rStep = (rRange[1] - rRange[0]) / canvasWidth;
-  let iStep = (iRange[1] - iRange[0]) / canvasHeight;
+  const rRange = [mandelbrotTopLeft[0], mandelbrotBottomRight[0]];
+  const iRange = [mandelbrotTopLeft[1], mandelbrotBottomRight[1]];
+
+  let rStep = (rRange[1] - rRange[0]) / canvas.width;
+  let iStep = (iRange[1] - iRange[0]) / canvas.height;
   cList = [];
   zList = [];
   nList = [];
 
-  for (let y = 0; y < canvasHeight; y++) {
-    for (let x = 0; x < canvasWidth; x++) {
+  for (let y = 0; y < canvas.height; y++) {
+    for (let x = 0; x < canvas.width; x++) {
       cList.push([rRange[0] + x * rStep, iRange[0] + y * iStep]);
       zList.push([0, 0]);
       nList.push(0);
@@ -96,8 +97,8 @@ async function draw() {
     ctx.putImageData(img, 0, 0);
   }
 
-  // depending on radius
-  let iterationsPerTick = Math.min(Math.ceil(1 / radius), 30);
+  // depending on radiusInput.value
+  let iterationsPerTick = Math.min(Math.ceil(1 / radiusInput.value), 30);
 
   for (
     ;
@@ -118,91 +119,76 @@ async function draw() {
   iterationsPerTick = Math.floor(iterationsPerTick * 1.5);
 }
 
-let zoomDebounceTimer;
+let isZooming = false;
+
+function onZoomStart() {
+  // stop drawing
+  currentDrawId++;
+  isZooming = true;
+}
 
 function onZoom(eventPosition, deltaZoom, deltaPosition = [0, 0]) {
-  if (deltaZoom < -900) {
-    deltaZoom = -900;
-  }
-  currentDrawId++;
+  const zoomFactor = Math.pow(1.001, -deltaZoom);
+  const previousX = mandelbrotCoordSystem.x;
+  const previousY = mandelbrotCoordSystem.y;
 
-  // calculate new radius
-  const oldRadius = Number(radiusInput.value);
-  radius = oldRadius * (1 + deltaZoom / 1000);
-  radiusInput.value = radius;
+  // zoom mandelbrot
+  // move the coord system first
+  mandelbrotCoordSystem.moveOriginRelativeToViewport(
+    deltaPosition[0],
+    deltaPosition[1]
+  );
 
-  const realSpan = 2 * oldRadius * aspectRatio;
-  const imaginarySpan = 2 * oldRadius;
+  // then scale
+  mandelbrotCoordSystem.scaleAtViewportPosition(
+    zoomFactor,
+    eventPosition[0],
+    eventPosition[1]
+  );
 
-  // calculate new position with mouse position
-  const mouseReal = rRange[0] + realSpan * (eventPosition[0] / canvasWidth);
-  const mouseImaginary =
-    iRange[0] + imaginarySpan * (eventPosition[1] / canvasHeight);
-
-  // calculate new ranges and spans
-  const newRRange = [
-    position[0] - radius * aspectRatio,
-    position[0] + radius * aspectRatio,
-  ];
-  const newIRange = [position[1] - radius, position[1] + radius];
-  const newRealSpan = 2 * radius * aspectRatio;
-  const newImaginarySpan = 2 * radius;
-
-  // calculate new mouse position with new ranges and spans
-  const newMouseReal =
-    newRRange[0] +
-    newRealSpan * ((eventPosition[0] - deltaPosition[0]) / canvasWidth);
-  const newMouseImaginary =
-    newIRange[0] +
-    newImaginarySpan * ((eventPosition[1] - deltaPosition[1]) / canvasHeight);
-
-  // calculate difference
-  const realDiff = mouseReal - newMouseReal;
-  const imaginaryDiff = mouseImaginary - newMouseImaginary;
+  const spanX = mandelbrotCoordSystem.fromViewportDistance(canvas.width);
+  const spanY = mandelbrotCoordSystem.fromViewportDistance(canvas.height);
+  radiusInput.value = Math.min(spanX, spanY) / 2;
 
   // update position with difference
-  realInput.value = Number(realInput.value) + realDiff;
-  imaginaryInput.value = Number(imaginaryInput.value) + imaginaryDiff;
+  [realInput.value, imaginaryInput.value] = mandelbrotCoordSystem.fromViewport(
+    canvas.width / 2,
+    canvas.height / 2
+  );
 
-  // update values
-  loadValuesFromForm();
-
-  // draw after some time without using the mouse wheel
-  clearTimeout(zoomDebounceTimer);
-  zoomDebounceTimer = setTimeout(() => {
-    zoomDebounceTimer = null;
-    draw();
-  }, zoomDebounceTime);
-
-  const zoomFactor = oldRadius / radius;
-  ctx.putImageData(img, 0, 0);
-
-  // get current canvas scale
-  const transform = ctx.getTransform();
-  const mouseCanvasPosition = [
-    (eventPosition[0] - transform.e) / transform.a,
-    (eventPosition[1] - transform.f) / transform.d,
-  ];
+  const newX = mandelbrotCoordSystem.x;
+  const newY = mandelbrotCoordSystem.y;
 
   // zoom
-  ctx.scale(zoomFactor, zoomFactor);
+  // TODO fix
+  const translate = [newX - previousX, newY - previousY];
 
-  const newTransform = ctx.getTransform();
-  const newMouseCanvasPosition = [
-    (eventPosition[0] - newTransform.e) / newTransform.a,
-    (eventPosition[1] - newTransform.f) / newTransform.d,
-  ];
-  const translate = [
-    newMouseCanvasPosition[0] - mouseCanvasPosition[0] - deltaPosition[0],
-    newMouseCanvasPosition[1] - mouseCanvasPosition[1] - deltaPosition[1],
-  ];
-  ctx.translate(translate[0], translate[1]);
+  ctx.scale(zoomFactor, zoomFactor);
+  ctx.translate(0, 0);
+  ctx.putImageData(img, 0, 0);
   ctx.drawImage(canvas, 0, 0);
 }
 
+function onZoomEnd() {
+  draw();
+  isZooming = false;
+}
+
+let wheelDebounceTimer;
+
 // mouse wheel
 document.addEventListener("wheel", (event) => {
+  if (!isZooming) {
+    onZoomStart();
+  }
   onZoom([event.clientX, event.clientY], event.deltaY);
+
+  // draw after some time without using the mouse wheel
+  clearTimeout(wheelDebounceTimer);
+  wheelDebounceTimer = setTimeout(() => {
+    wheelDebounceTimer = null;
+    onZoomEnd();
+  }, zoomDebounceTime);
 });
 
 let lastDistance;
@@ -211,31 +197,31 @@ let lastTouchPosition;
 // touchpad
 document.addEventListener("touchmove", (event) => {
   if (event.touches.length === 2) {
+    if (!isZooming) {
+      onZoomStart();
+    }
     const touch1 = event.touches[0];
     const touch2 = event.touches[1];
     const touchPosition = [
       (touch1.clientX + touch2.clientX) / 2,
       (touch1.clientY + touch2.clientY) / 2,
     ];
-    const distance =
-      5 *
-      Math.sqrt(
-        Math.pow(touch1.clientX - touch2.clientX, 2) +
-          Math.pow(touch1.clientY - touch2.clientY, 2)
-      );
+    const distance = Math.sqrt(
+      Math.pow(touch1.clientX - touch2.clientX, 2) +
+        Math.pow(touch1.clientY - touch2.clientY, 2)
+    );
     if (lastDistance) {
+      zoomDebounceTime = 300;
       onZoom(
         [
           (touch1.clientX + touch2.clientX) / 2,
           (touch1.clientY + touch2.clientY) / 2,
         ],
-        lastDistance - distance,
-        lastTouchPosition
-          ? [
-              lastTouchPosition[0] - touchPosition[0],
-              lastTouchPosition[1] - touchPosition[1],
-            ]
-          : [0, 0]
+        5 * (lastDistance - distance),
+        [
+          lastTouchPosition[0] - touchPosition[0],
+          lastTouchPosition[1] - touchPosition[1],
+        ]
       );
     }
     lastTouchPosition = touchPosition;
@@ -245,13 +231,15 @@ document.addEventListener("touchmove", (event) => {
 
 // touch release
 document.addEventListener("touchend", (event) => {
-  lastDistance = null;
-  lastTouchPosition = null;
+  if (lastDistance) {
+    onZoomEnd();
+    lastDistance = null;
+    lastTouchPosition = null;
+  }
 });
 
 infoForm.addEventListener("submit", (event) => {
   event.preventDefault();
-  loadValuesFromForm();
   draw();
 });
 
@@ -263,9 +251,7 @@ resetButton.addEventListener("click", () => {
   realInput.value = 0;
   imaginaryInput.value = 0;
   radiusInput.value = 2;
-  loadValuesFromForm();
   draw();
 });
 
-loadValuesFromForm();
 draw();
