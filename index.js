@@ -50,6 +50,7 @@ function resetMandelbrot() {
 /**
  *
  * @param {number[]} nList
+ * @param {number} currentIteration
  */
 function drawMandelbrot(nList, currentIteration) {
   for (let pixelIndex = 0; pixelIndex < nList.length; pixelIndex++) {

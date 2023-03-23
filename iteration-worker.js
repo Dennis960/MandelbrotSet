@@ -77,7 +77,7 @@ async function start(canvasSize, iterationsPerTick, mandelbrotCoords) {
   run(canvasSize, iterationsPerTick, mandelbrotCoords);
 }
 
-function postColorList() {
+function postNList() {
   postMessage({
     nList: nList,
     currentIteration: currentIteration,
@@ -87,7 +87,7 @@ function postColorList() {
 onmessage = (e) => {
   const { canvasSize, iterationsPerTick, mandelbrotCoords, command } = e.data;
   if (command === "request") {
-    postColorList();
+    postNList();
   } else if (command === "start") {
     start(canvasSize, iterationsPerTick, mandelbrotCoords);
   } else if (command === "stop") {
