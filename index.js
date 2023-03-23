@@ -275,13 +275,16 @@ let isDragging = false;
 let lastMousePosition;
 
 document.addEventListener("mousedown", (event) => {
-  isDragging = true;
   lastMousePosition = [event.clientX, event.clientY];
-  onMoveStart();
 });
 
 document.addEventListener("mousemove", (event) => {
-  if (isDragging) {
+  // check if mouse is down
+  if (event.buttons === 1) {
+    if (!isDragging) {
+      onMoveStart();
+      isDragging = true;
+    }
     onMove([
       lastMousePosition[0] - event.clientX,
       lastMousePosition[1] - event.clientY,
@@ -291,8 +294,18 @@ document.addEventListener("mousemove", (event) => {
 });
 
 document.addEventListener("mouseup", (event) => {
-  isDragging = false;
-  onMoveEnd();
+  if (isDragging) {
+    isDragging = false;
+    onMoveEnd();
+  }
+});
+
+// listener when window is resized
+window.addEventListener("resize", () => {
+  canvas.width = window.innerWidth;
+  canvas.height = window.innerHeight;
+  resetMandelbrot();
+  draw();
 });
 
 infoForm.addEventListener("submit", (event) => {
