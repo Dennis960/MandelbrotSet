@@ -49,19 +49,15 @@ function resetMandelbrot() {
 
 /**
  *
- * @param {number[]} nList
- * @param {number} currentIteration
+ * @param {ArrayBufferLike} colorList
  */
-function drawMandelbrot(nList, currentIteration) {
-  for (let pixelIndex = 0; pixelIndex < nList.length; pixelIndex++) {
-    let value = Math.pow(nList[pixelIndex] / currentIteration, 1) * 255;
-    const color = [value, value, value, 255];
-    img.data[pixelIndex * 4 + 0] = color[0];
-    img.data[pixelIndex * 4 + 1] = color[1];
-    img.data[pixelIndex * 4 + 2] = color[2];
-    img.data[pixelIndex * 4 + 3] = color[3];
-  }
-  ctx.putImageData(img, 0, 0);
+function drawMandelbrot(colorList) {
+  const imgData = new ImageData(
+    new Uint8ClampedArray(colorList),
+    canvas.width,
+    canvas.height
+  );
+  ctx.putImageData(imgData, 0, 0);
 }
 
 let iterationWorker;
@@ -69,6 +65,7 @@ let iterationWorker;
 function stopIterationWorker() {
   if (iterationWorker) {
     iterationWorker.terminate();
+    iterationWorker = null;
   }
 }
 
@@ -78,9 +75,9 @@ function restartIterationWorker() {
   iterationWorker = new Worker("iteration-worker.js", { type: "module" });
 
   iterationWorker.onmessage = (event) => {
-    iterationsLabel.innerHTML = event.data.currentIteration;
-    drawMandelbrot(event.data.nList, event.data.currentIteration);
     requestAnimationFrame(() => {
+      iterationsLabel.innerHTML = event.data.currentIteration;
+      drawMandelbrot(event.data.colorListBuffer);
       requestWorkerData();
     });
   };
@@ -90,6 +87,9 @@ function restartIterationWorker() {
   });
 
   function requestWorkerData() {
+    if (!iterationWorker) {
+      return;
+    }
     iterationWorker.postMessage({
       command: "request",
     });

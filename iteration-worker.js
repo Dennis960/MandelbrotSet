@@ -3,7 +3,8 @@
 import { CoordSystem } from "./coord-system.js";
 
 let cList = [];
-let zList = [];
+let zListR = [];
+let zListI = [];
 let nList = [];
 let currentIteration = 1;
 
@@ -18,8 +19,8 @@ const escapeRadiusSquared = Math.pow(escapeRadius, 2);
  * @returns
  */
 function iterateEquation(pixelIndex, iterationsPerTick) {
-  let zR = zList[pixelIndex][0];
-  let zI = zList[pixelIndex][1];
+  let zR = zListR[pixelIndex];
+  let zI = zListI[pixelIndex];
   let sR = zR * zR;
   let sI = zI * zI;
 
@@ -29,7 +30,8 @@ function iterateEquation(pixelIndex, iterationsPerTick) {
       zR = sR - sI + cList[pixelIndex][0];
       sR = zR * zR;
       sI = zI * zI;
-      zList[pixelIndex] = [zR, zI];
+      zListR[pixelIndex] = zR;
+      zListI[pixelIndex] = zI;
       nList[pixelIndex] = nList[pixelIndex] + 1;
     }
   }
@@ -49,17 +51,18 @@ async function run(canvasSize, iterationsPerTick, mandelbrotCoords) {
   );
   const rRange = [mandelbrotTopLeft[0], mandelbrotBottomRight[0]];
   const iRange = [mandelbrotTopLeft[1], mandelbrotBottomRight[1]];
-  let rStep = (rRange[1] - rRange[0]) / canvasSize[0];
-  let iStep = (iRange[1] - iRange[0]) / canvasSize[1];
+  const rStep = (rRange[1] - rRange[0]) / canvasSize[0];
+  const iStep = (iRange[1] - iRange[0]) / canvasSize[1];
   for (let y = 0; y < canvasSize[1]; y++) {
     for (let x = 0; x < canvasSize[0]; x++) {
       cList.push([rRange[0] + x * rStep, iRange[0] + y * iStep]);
-      zList.push([0, 0]);
+      zListR.push(0);
+      zListI.push(0);
       nList.push(0);
     }
   }
 
-  while (!isStopped) {
+  while (true) {
     currentIteration += iterationsPerTick;
     for (let pixelIndex = 0; pixelIndex < cList.length; pixelIndex++) {
       iterateEquation(pixelIndex, iterationsPerTick);
@@ -68,18 +71,24 @@ async function run(canvasSize, iterationsPerTick, mandelbrotCoords) {
   }
 }
 
-let isStopped = true;
-
-async function start(canvasSize, iterationsPerTick, mandelbrotCoords) {
-  isStopped = true;
-  await new Promise((resolve) => setTimeout(resolve, 0));
-  isStopped = false;
+function start(canvasSize, iterationsPerTick, mandelbrotCoords) {
   run(canvasSize, iterationsPerTick, mandelbrotCoords);
 }
 
-function postNList() {
+function postColorList() {
+  let colorList = new Uint8Array(nList.length * 4);
+  const factor = 255 / currentIteration;
+
+  for (let pixelIndex = 0; pixelIndex < nList.length; pixelIndex++) {
+    let value = nList[pixelIndex] * factor;
+    colorList[pixelIndex * 4 + 0] = value;
+    colorList[pixelIndex * 4 + 1] = value;
+    colorList[pixelIndex * 4 + 2] = value;
+    colorList[pixelIndex * 4 + 3] = 255;
+  }
+
   postMessage({
-    nList: nList,
+    colorListBuffer: colorList.buffer,
     currentIteration: currentIteration,
   });
 }
@@ -87,10 +96,8 @@ function postNList() {
 onmessage = (e) => {
   const { canvasSize, iterationsPerTick, mandelbrotCoords, command } = e.data;
   if (command === "request") {
-    postNList();
+    postColorList();
   } else if (command === "start") {
     start(canvasSize, iterationsPerTick, mandelbrotCoords);
-  } else if (command === "stop") {
-    isStopped = true;
   }
 };
