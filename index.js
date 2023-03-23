@@ -26,7 +26,7 @@ let zList = [];
 let nList = [];
 
 let currentDrawId = 0;
-let zoomDebounceTime = 60000;
+let zoomDebounceTime = 600;
 
 // coordinate systems
 const mandelbrotCoordSystem = new CoordSystem();
@@ -124,6 +124,34 @@ async function draw() {
   iterationsPerTick = Math.floor(iterationsPerTick * 1.5);
 }
 
+let isMoving = false;
+
+function onMoveStart() {
+  isMoving = true;
+  // stop drawing
+  currentDrawId++;
+}
+
+function onMove(deltaPosition) {
+  const translate = [-deltaPosition[0], -deltaPosition[1]];
+
+  mandelbrotCoordSystem.moveOriginRelativeToViewport(...translate);
+  [realInput.value, imaginaryInput.value] = mandelbrotCoordSystem.fromViewport(
+    canvas.width / 2,
+    canvas.height / 2
+  );
+
+  ctx.putImageData(img, 0, 0);
+  ctx.translate(...translate);
+  ctx.drawImage(canvas, 0, 0);
+}
+
+function onMoveEnd() {
+  isMoving = false;
+  draw();
+  ctx.resetTransform();
+}
+
 let isZooming = false;
 
 function onZoomStart() {
@@ -132,14 +160,10 @@ function onZoomStart() {
   isZooming = true;
 }
 
-function onZoom(eventPosition, deltaZoom, deltaPosition = [0, 0]) {
+function onZoom(eventPosition, deltaZoom) {
   const zoomFactor = Math.pow(1.001, -deltaZoom);
 
-  // zoom mandelbrot
-  // move the coord system first
-  mandelbrotCoordSystem.moveOriginRelativeToViewport(...deltaPosition);
-
-  // then scale
+  // scale
   mandelbrotCoordSystem.scaleAtViewportPosition(zoomFactor, ...eventPosition);
 
   const spanX = mandelbrotCoordSystem.fromViewportDistance(canvas.width);
@@ -157,9 +181,9 @@ function onZoom(eventPosition, deltaZoom, deltaPosition = [0, 0]) {
     eventPosition[1] * (1 - zoomFactor),
   ];
 
-  ctx.putImageData(img, 0, 0);
   ctx.translate(...translate);
   ctx.scale(zoomFactor, zoomFactor);
+  ctx.putImageData(img, 0, 0);
   ctx.drawImage(canvas, 0, 0);
 }
 
@@ -194,6 +218,7 @@ document.addEventListener("touchmove", (event) => {
   if (event.touches.length === 2) {
     if (!isZooming) {
       onZoomStart();
+      onMoveStart();
     }
     const touch1 = event.touches[0];
     const touch2 = event.touches[1];
@@ -207,30 +232,67 @@ document.addEventListener("touchmove", (event) => {
     );
     if (lastDistance) {
       zoomDebounceTime = 300;
+      onMove([
+        lastTouchPosition[0] - touchPosition[0],
+        lastTouchPosition[1] - touchPosition[1],
+      ]);
       onZoom(
         [
           (touch1.clientX + touch2.clientX) / 2,
           (touch1.clientY + touch2.clientY) / 2,
         ],
-        5 * (lastDistance - distance),
-        [
-          lastTouchPosition[0] - touchPosition[0],
-          lastTouchPosition[1] - touchPosition[1],
-        ]
+        5 * (lastDistance - distance)
       );
     }
     lastTouchPosition = touchPosition;
     lastDistance = distance;
+  } else if (event.touches.length == 1) {
+    if (!isMoving) {
+      onMoveStart();
+    }
+    if (lastTouchPosition) {
+      onMove([
+        lastTouchPosition[0] - event.touches[0].clientX,
+        lastTouchPosition[1] - event.touches[0].clientY,
+      ]);
+    }
+    lastTouchPosition = [event.touches[0].clientX, event.touches[0].clientY];
   }
 });
 
 // touch release
 document.addEventListener("touchend", (event) => {
-  if (lastDistance) {
+  if (lastDistance || lastTouchPosition) {
     onZoomEnd();
+    onMoveEnd();
     lastDistance = null;
     lastTouchPosition = null;
   }
+});
+
+// mouse drag
+let isDragging = false;
+let lastMousePosition;
+
+document.addEventListener("mousedown", (event) => {
+  isDragging = true;
+  lastMousePosition = [event.clientX, event.clientY];
+  onMoveStart();
+});
+
+document.addEventListener("mousemove", (event) => {
+  if (isDragging) {
+    onMove([
+      lastMousePosition[0] - event.clientX,
+      lastMousePosition[1] - event.clientY,
+    ]);
+    lastMousePosition = [event.clientX, event.clientY];
+  }
+});
+
+document.addEventListener("mouseup", (event) => {
+  isDragging = false;
+  onMoveEnd();
 });
 
 infoForm.addEventListener("submit", (event) => {
