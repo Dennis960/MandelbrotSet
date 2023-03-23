@@ -26,14 +26,19 @@ let zList = [];
 let nList = [];
 
 let currentDrawId = 0;
-let zoomDebounceTime = 600;
+let zoomDebounceTime = 60000;
 
 // coordinate systems
-const mandelbrotCoordSystem = new CoordSystem(
-  canvas.width / 2,
-  canvas.height / 2,
-  Math.min(canvas.width, canvas.height) / 4
-);
+const mandelbrotCoordSystem = new CoordSystem();
+
+function resetMandelbrot() {
+  mandelbrotCoordSystem.x = canvas.width / 2;
+  mandelbrotCoordSystem.y = canvas.height / 2;
+  mandelbrotCoordSystem.scale = Math.min(canvas.width, canvas.height) / 4;
+  realInput.value = 0;
+  imaginaryInput.value = 0;
+  radiusInput.value = 2;
+}
 
 function iterateEquation(pixelIndex, iterationAmount, drawId) {
   let zR = zList[pixelIndex][0];
@@ -129,22 +134,13 @@ function onZoomStart() {
 
 function onZoom(eventPosition, deltaZoom, deltaPosition = [0, 0]) {
   const zoomFactor = Math.pow(1.001, -deltaZoom);
-  const previousX = mandelbrotCoordSystem.x;
-  const previousY = mandelbrotCoordSystem.y;
 
   // zoom mandelbrot
   // move the coord system first
-  mandelbrotCoordSystem.moveOriginRelativeToViewport(
-    deltaPosition[0],
-    deltaPosition[1]
-  );
+  mandelbrotCoordSystem.moveOriginRelativeToViewport(...deltaPosition);
 
   // then scale
-  mandelbrotCoordSystem.scaleAtViewportPosition(
-    zoomFactor,
-    eventPosition[0],
-    eventPosition[1]
-  );
+  mandelbrotCoordSystem.scaleAtViewportPosition(zoomFactor, ...eventPosition);
 
   const spanX = mandelbrotCoordSystem.fromViewportDistance(canvas.width);
   const spanY = mandelbrotCoordSystem.fromViewportDistance(canvas.height);
@@ -156,22 +152,21 @@ function onZoom(eventPosition, deltaZoom, deltaPosition = [0, 0]) {
     canvas.height / 2
   );
 
-  const newX = mandelbrotCoordSystem.x;
-  const newY = mandelbrotCoordSystem.y;
+  let translate = [
+    eventPosition[0] * (1 - zoomFactor),
+    eventPosition[1] * (1 - zoomFactor),
+  ];
 
-  // zoom
-  // TODO fix
-  const translate = [newX - previousX, newY - previousY];
-
-  ctx.scale(zoomFactor, zoomFactor);
-  ctx.translate(0, 0);
   ctx.putImageData(img, 0, 0);
+  ctx.translate(...translate);
+  ctx.scale(zoomFactor, zoomFactor);
   ctx.drawImage(canvas, 0, 0);
 }
 
 function onZoomEnd() {
   draw();
   isZooming = false;
+  ctx.resetTransform();
 }
 
 let wheelDebounceTimer;
@@ -248,10 +243,9 @@ hideOverlayButton.addEventListener("click", () => {
 });
 
 resetButton.addEventListener("click", () => {
-  realInput.value = 0;
-  imaginaryInput.value = 0;
-  radiusInput.value = 2;
-  draw();
+  resetMandelbrot();
+  onZoomEnd();
 });
 
+resetMandelbrot();
 draw();
