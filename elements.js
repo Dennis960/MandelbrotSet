@@ -1,9 +1,11 @@
+import { $ } from "./query.js";
+
 /**
  * @typedef {Object} NumberInput
  * @property {HTMLElement} htmlElement
  * @property {number} value
  */
-class NumberInput {
+export class NumberInput {
   /**
    * @type {HTMLElement}
    */

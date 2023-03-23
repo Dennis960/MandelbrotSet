@@ -7,7 +7,7 @@
  * @property {number} scale  Scale relative to the viewport (scale of 1 means 1 pixel = 1 unit)
  * Also the number of units per pixel
  */
-class CoordSystem {
+export class CoordSystem {
   /**
    * x coordinate of the origin relative to the viewport
    */
