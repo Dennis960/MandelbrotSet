@@ -6,7 +6,7 @@ let nList: u64[] = [];
 let currentIteration: u32 = 0;
 
 // default values
-let escapeRadiusSquared: u8 = 100; // escapeRadius * escapeRadius
+let escapeRadiusSquared: u8 = 4; // escapeRadius * escapeRadius
 const escapeRadiusSplat: v128 = v128.splat<f64>(escapeRadiusSquared);
 
 export function init(canvasWidth: f64, canvasHeight: f64, x: f64, y: f64, scale: f64): void {
