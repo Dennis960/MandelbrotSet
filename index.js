@@ -131,12 +131,21 @@ function onTransformation() {
   const [left, top] = lastMandelbrotCoordSystem.fromViewport(0, 0);
   const [left2, top2] = mandelbrotCoordSystem.toViewport(left, top);
 
+  const canvas2 = document.createElement("canvas");
+  canvas2.width = canvas.width;
+  canvas2.height = canvas.height;
+  /**
+   * @type {CanvasRenderingContext2D}
+   */
+  // @ts-ignore
+  const ctx2 = canvas2.getContext("2d");
+  ctx2.putImageData(imgData, 0, 0);
+
   ctx.resetTransform();
   ctx.translate(left2, top2);
   ctx.scale(scale, scale);
-
-  ctx.putImageData(imgData, 0, 0);
-  ctx.drawImage(canvas, 0, 0);
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  ctx.drawImage(canvas2, 0, 0);
 
   if (transformationDebounceTimeout) {
     clearTimeout(transformationDebounceTimeout);
