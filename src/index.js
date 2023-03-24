@@ -294,6 +294,7 @@ hideOverlayButton.addEventListener("click", () => {
 
 resetButton.addEventListener("click", () => {
   resetMandelbrot();
+  restartIterationWorker();
 });
 
 resetMandelbrot();
