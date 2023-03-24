@@ -62,6 +62,10 @@ let lastMandelbrotCoordSystem = null;
  * @param {ArrayBufferLike} colorList
  */
 function drawMandelbrot(colorList) {
+  if (transformationDebounceTimeout) {
+    // transformation is still in progress
+    return;
+  }
   imgData = new ImageData(
     new Uint8ClampedArray(colorList),
     canvas.width,
@@ -70,24 +74,15 @@ function drawMandelbrot(colorList) {
   ctx.putImageData(imgData, 0, 0);
 }
 
-let iterationWorker;
-
-function stopIterationWorker() {
-  if (iterationWorker) {
-    iterationWorker.terminate();
-    iterationWorker = null;
-  }
-}
+const iterationWorker = new Worker("./src/iteration-worker.js", {
+  type: "module",
+});
 
 function restartIterationWorker() {
-  stopIterationWorker();
-
-  iterationWorker = new Worker("./src/iteration-worker.js", { type: "module" });
-
   iterationWorker.onmessage = (event) => {
+    iterationsLabel.innerHTML = event.data.currentIteration;
+    drawMandelbrot(event.data.colorListBuffer);
     requestAnimationFrame(() => {
-      iterationsLabel.innerHTML = event.data.currentIteration;
-      drawMandelbrot(event.data.colorListBuffer);
       requestWorkerData();
     });
   };
@@ -127,7 +122,6 @@ function restartIterationWorker() {
 let transformationDebounceTimeout = null;
 
 function onTransformation() {
-  stopIterationWorker();
   const scale = mandelbrotCoordSystem.scale / lastMandelbrotCoordSystem.scale;
 
   const [left, top] = lastMandelbrotCoordSystem.fromViewport(0, 0);

@@ -3,11 +3,9 @@
 import { init, iterateAll } from "../build/release.js";
 
 let currentIteration = 0;
+let nList = [];
 
 async function postColorList() {
-  const nList = iterateAll(10);
-  currentIteration += 10;
-
   let colorList = new Uint8Array(nList.length * 4);
   const factor = 255 / currentIteration;
 
@@ -25,18 +23,38 @@ async function postColorList() {
   });
 }
 
+let currentWorkerId = 0;
+
+async function start(canvasSize, mandelbrotCoords) {
+  const workerID = ++currentWorkerId;
+  currentIteration = 0;
+  init(
+    canvasSize[0],
+    canvasSize[1],
+    mandelbrotCoords[0],
+    mandelbrotCoords[1],
+    mandelbrotCoords[2]
+  );
+
+  while (workerID === currentWorkerId) {
+    const iterationAmount = 1;
+    console.time("iterateAll");
+    for (let i = 0; i < iterationAmount; i++) {
+      nList = iterateAll(1);
+    }
+    console.timeEnd("iterateAll");
+    currentIteration += iterationAmount;
+    await new Promise((resolve) => setTimeout(resolve, 0));
+  }
+}
+
 onmessage = (e) => {
   const { canvasSize, mandelbrotCoords, command } = e.data;
-  console.log(command);
   if (command === "request") {
     postColorList();
   } else if (command === "start") {
-    init(
-      canvasSize[0],
-      canvasSize[1],
-      mandelbrotCoords[0],
-      mandelbrotCoords[1],
-      mandelbrotCoords[2]
-    );
+    start(canvasSize, mandelbrotCoords);
+  } else if (command === "stop") {
+    currentWorkerId++;
   }
 };

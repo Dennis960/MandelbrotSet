@@ -9,11 +9,19 @@ let escapeRadiusSquared: u8 = 100; // escapeRadius * escapeRadius
 
 export function init(canvasWidth: f64, canvasHeight: f64, x: f64, y: f64, scale: f64): void {
   const rRangeStart: f64 = (0 - x) / scale;
-  const rRangeEnd: f64 = (canvasHeight - y) / scale;
+  const rRangeEnd: f64 = (canvasWidth - x) / scale;
+
   const iRangeStart: f64 = (0 - y) / scale;
-  const iRangeEnd: f64 = (canvasWidth - x) / scale;
+  const iRangeEnd: f64 = (canvasHeight - y) / scale;
+
   const rStep: f64 = (rRangeEnd - rRangeStart) / canvasWidth;
   const iStep: f64 = (iRangeEnd - iRangeStart) / canvasHeight;
+
+  cListR = [];
+  cListI = [];
+  zListR = [];
+  zListI = [];
+  nList = [];
 
   for (let y: f64 = 0; y < canvasHeight; y++) {
     for (let x: f64 = 0; x < canvasWidth; x++) {
