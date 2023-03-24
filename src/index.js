@@ -58,16 +58,11 @@ function resetMandelbrot() {
 let lastMandelbrotCoordSystem = null;
 
 /**
- *
- * @param {ArrayBufferLike} colorList
+ * @param {ArrayBufferLike} colorListBuffer
  */
-function drawMandelbrot(colorList) {
-  if (transformationDebounceTimeout) {
-    // transformation is still in progress
-    return;
-  }
+function drawMandelbrot(colorListBuffer) {
   imgData = new ImageData(
-    new Uint8ClampedArray(colorList),
+    new Uint8ClampedArray(colorListBuffer),
     canvas.width,
     canvas.height
   );
@@ -83,6 +78,7 @@ function restartIterationWorker() {
     iterationsLabel.innerHTML = event.data.currentIteration;
     drawMandelbrot(event.data.colorListBuffer);
     requestAnimationFrame(() => {
+      if (transformationDebounceTimeout) return;
       requestWorkerData();
     });
   };
@@ -95,9 +91,6 @@ function restartIterationWorker() {
   });
 
   function requestWorkerData() {
-    if (!iterationWorker) {
-      return;
-    }
     iterationWorker.postMessage({
       command: "request",
     });
@@ -122,6 +115,18 @@ function restartIterationWorker() {
 let transformationDebounceTimeout = null;
 
 function onTransformation() {
+  if (transformationDebounceTimeout) {
+    clearTimeout(transformationDebounceTimeout);
+  } else {
+    iterationWorker.postMessage({
+      command: "stop",
+    });
+  }
+  transformationDebounceTimeout = setTimeout(() => {
+    restartIterationWorker();
+    transformationDebounceTimeout = null;
+  }, transformationDebounceTime);
+
   const scale = mandelbrotCoordSystem.scale / lastMandelbrotCoordSystem.scale;
 
   const [left, top] = lastMandelbrotCoordSystem.fromViewport(0, 0);
@@ -142,14 +147,6 @@ function onTransformation() {
   ctx.scale(scale, scale);
   ctx.clearRect(0, 0, canvas.width, canvas.height);
   ctx.drawImage(canvas2, 0, 0);
-
-  if (transformationDebounceTimeout) {
-    clearTimeout(transformationDebounceTimeout);
-  }
-  transformationDebounceTimeout = setTimeout(() => {
-    restartIterationWorker();
-    transformationDebounceTimeout = null;
-  }, transformationDebounceTime);
 }
 
 /**

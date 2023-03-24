@@ -3,11 +3,11 @@
 import { init, iterateAll } from "../build/release.js";
 
 let currentIteration = 0;
-let colorList = new Uint8Array(0);
+let colorListBuffer;
 
 async function postColorList() {
   postMessage({
-    colorListBuffer: colorList.buffer,
+    colorListBuffer: colorListBuffer,
     currentIteration: currentIteration,
   });
 }
@@ -26,8 +26,8 @@ async function start(canvasSize, mandelbrotCoords) {
   );
 
   while (workerID === currentWorkerId) {
-    const iterationAmount = 10;
-    colorList = iterateAll(iterationAmount);
+    const iterationAmount = 1;
+    colorListBuffer = iterateAll(iterationAmount);
     currentIteration += iterationAmount;
     await new Promise((resolve) => setTimeout(resolve, 0));
   }

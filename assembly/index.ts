@@ -38,8 +38,8 @@ export function init(canvasWidth: f32, canvasHeight: f32, x: f32, y: f32, scale:
   currentIteration = 0;
 }
 
-export function iterateAll(numberOfIterations: u32): Uint8Array {
-  for (let pixelIndex: i32 = 0; pixelIndex < zListR.length - 1; pixelIndex += 4) {
+export function iterateAll(numberOfIterations: u32): ArrayBuffer {
+  for (let pixelIndex: i32 = 0; pixelIndex < zListR.length; pixelIndex += 4) {
     let zR: v128 = v128.load(zListR.dataStart + pixelIndex * 4); // load 4 f32 of zR
     let zI: v128 = v128.load(zListI.dataStart + pixelIndex * 4); // load 4 f32 of zI
     let sR: v128 = v128.mul<f32>(zR, zR); // square zR using SIMD
@@ -89,5 +89,5 @@ export function iterateAll(numberOfIterations: u32): Uint8Array {
     v128.store(colorList.dataStart + pixelIndex * 4, valueVec);
   }
 
-  return colorList;
+  return colorList.buffer;
 }
