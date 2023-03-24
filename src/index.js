@@ -54,6 +54,7 @@ function resetMandelbrot() {
   realInput.value = 0;
   imaginaryInput.value = 0;
   radiusInput.value = 2;
+  iterationAmountInput.value = 10;
 }
 
 let lastMandelbrotCoordSystem = null;
