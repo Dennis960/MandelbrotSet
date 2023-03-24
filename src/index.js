@@ -8,7 +8,7 @@ import { $ } from "./query.js";
 const radiusInput = new NumberInput("radius");
 const realInput = new NumberInput("real");
 const imaginaryInput = new NumberInput("imaginary");
-const iterationAmountInput = new NumberInput("iteration-amount", 100);
+const iterationAmountInput = new NumberInput("iteration-amount", 10);
 
 const iterationsLabel = $("iterations");
 const infoForm = $("info-form");
