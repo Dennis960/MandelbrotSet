@@ -82,7 +82,7 @@ function stopIterationWorker() {
 function restartIterationWorker() {
   stopIterationWorker();
 
-  iterationWorker = new Worker("iteration-worker.js", { type: "module" });
+  iterationWorker = new Worker("./src/iteration-worker.js", { type: "module" });
 
   iterationWorker.onmessage = (event) => {
     requestAnimationFrame(() => {
@@ -93,6 +93,9 @@ function restartIterationWorker() {
   };
 
   iterationWorker.addEventListener("error", (error) => {
+    console.error(error);
+  });
+  iterationWorker.addEventListener("messageerror", (error) => {
     console.error(error);
   });
 
@@ -115,7 +118,6 @@ function restartIterationWorker() {
 
   iterationWorker.postMessage({
     canvasSize: [canvas.width, canvas.height],
-    iterationsPerTick: 30,
     mandelbrotCoords: mandelbrotCoords,
     command: "start",
   });
