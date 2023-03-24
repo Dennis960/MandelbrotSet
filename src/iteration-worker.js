@@ -14,7 +14,7 @@ async function postColorList() {
 
 let currentWorkerId = 0;
 
-async function start(canvasSize, mandelbrotCoords) {
+async function start(canvasSize, mandelbrotCoords, iterationsPerTick) {
   const workerID = ++currentWorkerId;
   currentIteration = 0;
   init(
@@ -26,19 +26,18 @@ async function start(canvasSize, mandelbrotCoords) {
   );
 
   while (workerID === currentWorkerId) {
-    const iterationAmount = 1;
-    colorListBuffer = iterateAll(iterationAmount);
-    currentIteration += iterationAmount;
+    colorListBuffer = iterateAll(iterationsPerTick);
+    currentIteration += iterationsPerTick;
     await new Promise((resolve) => setTimeout(resolve, 0));
   }
 }
 
 onmessage = (e) => {
-  const { canvasSize, mandelbrotCoords, command } = e.data;
+  const { canvasSize, mandelbrotCoords, iterationsPerTick, command } = e.data;
   if (command === "request") {
     postColorList();
   } else if (command === "start") {
-    start(canvasSize, mandelbrotCoords);
+    start(canvasSize, mandelbrotCoords, iterationsPerTick);
   } else if (command === "stop") {
     currentWorkerId++;
   }

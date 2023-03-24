@@ -1,23 +1,23 @@
-
-let cListR: f32[] = [];
-let cListI: f32[] = [];
-let zListR: f32[] = [];
-let zListI: f32[] = [];
-let nList: u32[] = [];
+let cListR: f64[] = [];
+let cListI: f64[] = [];
+let zListR: f64[] = [];
+let zListI: f64[] = [];
+let nList: u64[] = [];
 let currentIteration: u32 = 0;
 
 // default values
 let escapeRadiusSquared: u8 = 100; // escapeRadius * escapeRadius
+const escapeRadiusSplat: v128 = v128.splat<f64>(escapeRadiusSquared);
 
-export function init(canvasWidth: f32, canvasHeight: f32, x: f32, y: f32, scale: f32): void {
-  const rRangeStart: f32 = (0 - x) / scale;
-  const rRangeEnd: f32 = (canvasWidth - x) / scale;
+export function init(canvasWidth: f64, canvasHeight: f64, x: f64, y: f64, scale: f64): void {
+  const rRangeStart: f64 = (0 - x) / scale;
+  const rRangeEnd: f64 = (canvasWidth - x) / scale;
 
-  const iRangeStart: f32 = (0 - y) / scale;
-  const iRangeEnd: f32 = (canvasHeight - y) / scale;
+  const iRangeStart: f64 = (0 - y) / scale;
+  const iRangeEnd: f64 = (canvasHeight - y) / scale;
 
-  const rStep: f32 = (rRangeEnd - rRangeStart) / canvasWidth;
-  const iStep: f32 = (iRangeEnd - iRangeStart) / canvasHeight;
+  const rStep: f64 = (rRangeEnd - rRangeStart) / canvasWidth;
+  const iStep: f64 = (iRangeEnd - iRangeStart) / canvasHeight;
 
   cListR = [];
   cListI = [];
@@ -25,8 +25,8 @@ export function init(canvasWidth: f32, canvasHeight: f32, x: f32, y: f32, scale:
   zListI = [];
   nList = [];
 
-  for (let y: f32 = 0; y < canvasHeight; y++) {
-    for (let x: f32 = 0; x < canvasWidth; x++) {
+  for (let y: f64 = 0; y < canvasHeight; y++) {
+    for (let x: f64 = 0; x < canvasWidth; x++) {
       cListR.push(rRangeStart + x * rStep);
       cListI.push(iRangeStart + y * iStep);
       zListR.push(0);
@@ -39,44 +39,46 @@ export function init(canvasWidth: f32, canvasHeight: f32, x: f32, y: f32, scale:
 }
 
 export function iterateAll(numberOfIterations: u32): ArrayBuffer {
-  for (let pixelIndex: i32 = 0; pixelIndex < zListR.length; pixelIndex += 4) {
-    let zR: v128 = v128.load(zListR.dataStart + pixelIndex * 4); // load 4 f32 of zR
-    let zI: v128 = v128.load(zListI.dataStart + pixelIndex * 4); // load 4 f32 of zI
-    let sR: v128 = v128.mul<f32>(zR, zR); // square zR using SIMD
-    let sI: v128 = v128.mul<f32>(zI, zI); // square zI using SIMD
+  for (let pixelIndex: i32 = 0; pixelIndex < zListR.length - 1; pixelIndex += 2) {
+    let zR: v128 = v128.load(zListR.dataStart + pixelIndex * 8); // load 2 f64 of zListR
+    let zI: v128 = v128.load(zListI.dataStart + pixelIndex * 8); // load 2 f64 of zListI
+    let sR: v128 = v128.mul<f64>(zR, zR); // square zR using SIMD
+    let sI: v128 = v128.mul<f64>(zI, zI); // square zI using SIMD
 
-    let escapeRadiusSquaredSplat: v128 = v128.splat<f32>(escapeRadiusSquared); // splat escapeRadiusSquared to 2 f32
-    let mask: v128 = v128.le<f32>(v128.add<f32>(sR, sI), escapeRadiusSquaredSplat); // compare sR + sI with escapeRadiusSquared using SIMD
+    let mask: v128 = v128.le<f64>(v128.add<f64>(sR, sI), escapeRadiusSplat); // compare sR + sI with escapeRadiusSquared using SIMD
 
     if (!v128.any_true(mask)) { // check if any of the 2 comparisons is true
       continue;
     }
 
-    const cListIValue: v128 = v128.load(cListI.dataStart + pixelIndex * 4); // load 2 f32 of cListI
-    const cListRValue: v128 = v128.load(cListR.dataStart + pixelIndex * 4); // load 2 f32 of cListR
+    const cListIValue: v128 = v128.load(cListI.dataStart + pixelIndex * 8); // load 2 f64 of cListI
+    const cListRValue: v128 = v128.load(cListR.dataStart + pixelIndex * 8); // load 2 f64 of cListR
 
     for (let i: u32 = 0; i < numberOfIterations; i++) {
-      zI = v128.add<f32>(v128.mul<f32>(v128.splat<f32>(2), v128.mul<f32>(zR, zI)), cListIValue); // calculate zI using SIMD
-      zR = v128.add<f32>(v128.sub<f32>(sR, sI), cListRValue); // calculate zR using SIMD
-      sR = v128.mul<f32>(zR, zR); // square zR using SIMD
-      sI = v128.mul<f32>(zI, zI); // square zI using SIMD
+      zI = v128.add<f64>(v128.mul<f64>(v128.splat<f64>(2), v128.mul<f64>(zR, zI)), cListIValue); // calculate zI using SIMD
+      zR = v128.add<f64>(v128.sub<f64>(sR, sI), cListRValue); // calculate zR using SIMD
+      sR = v128.mul<f64>(zR, zR); // square zR using SIMD
+      sI = v128.mul<f64>(zI, zI); // square zI using SIMD
     }
 
-    v128.store(zListR.dataStart + pixelIndex * 4, zR); // store 2 f32 of zR
-    v128.store(zListI.dataStart + pixelIndex * 4, zI); // store 2 f32 of zI
+    v128.store(zListR.dataStart + pixelIndex * 8, zR); // store 2 f64 of zR
+    v128.store(zListI.dataStart + pixelIndex * 8, zI); // store 2 f64 of zI
 
-    let n: v128 = v128.load(nList.dataStart + pixelIndex * 4); // load 2 i32 of n
-    const iSplat: v128 = v128.splat<u32>(numberOfIterations); // splat i to 2 i32
-    n = v128.add<u32>(n, v128.and(mask, iSplat)); // add i to n only for the true comparisons using SIMD
-    v128.store(nList.dataStart + pixelIndex * 4, n); // store 2 i32 of n
+    const nValue: v128 = v128.load(nList.dataStart + pixelIndex * 8); // load 2 u64 of nList
+    const nValueIncrement: v128 = v128.splat<u64>(numberOfIterations); // create a vector with 2 times the same value
+    const nValueIncremented: v128 = v128.add<u64>(nValue, v128.and(mask, nValueIncrement)); // increment nValue by numberOfIterations if mask is true
+    v128.store(nList.dataStart + pixelIndex * 8, nValueIncremented); // store 2 u64 of nList
   }
 
   currentIteration += numberOfIterations;
 
   let colorList = new Uint8Array(nList.length * 4);
   const factor: f32 = 255.0 / (<f32>currentIteration);
-  for (let pixelIndex = 0; pixelIndex < nList.length - 1; pixelIndex += 4) {
-    const nValues: v128 = v128.load(nList.dataStart + pixelIndex * 4);
+  for (let pixelIndex = 0; pixelIndex < nList.length - 3; pixelIndex += 4) {
+    // load 4 u64 of nList and convert them to 4 u32
+    const nValues1: v128 = v128.load(nList.dataStart + pixelIndex * 8);
+    const nValues2: v128 = v128.load(nList.dataStart + (pixelIndex + 2) * 8);
+    const nValues: v128 = v128.shuffle<u32>(nValues1, nValues2, 0, 2, 4, 6);
     const values: v128 = v128.mul<f32>(v128.convert<u32>(nValues), v128.splat<f32>(factor));
     const valuesAsU32: v128 = v128.trunc_sat<u32>(values);
     const splat255: v128 = v128.splat<u32>(255);

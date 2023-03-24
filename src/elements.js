@@ -11,8 +11,9 @@ export class NumberInput {
    */
   htmlElement;
 
-  constructor(elementId) {
+  constructor(elementId, defaultValue = 0) {
     this.htmlElement = $(elementId);
+    this.value = defaultValue;
   }
 
   /**

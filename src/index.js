@@ -8,6 +8,7 @@ import { $ } from "./query.js";
 const radiusInput = new NumberInput("radius");
 const realInput = new NumberInput("real");
 const imaginaryInput = new NumberInput("imaginary");
+const iterationAmountInput = new NumberInput("iteration-amount", 100);
 
 const iterationsLabel = $("iterations");
 const infoForm = $("info-form");
@@ -61,6 +62,11 @@ let lastMandelbrotCoordSystem = null;
  * @param {ArrayBufferLike} colorListBuffer
  */
 function drawMandelbrot(colorListBuffer) {
+  if (colorListBuffer.byteLength - canvas.width * canvas.height * 4 !== 0) {
+    // buffer size does not match canvas size
+    return;
+  }
+  if (transformationDebounceTimeout) return;
   imgData = new ImageData(
     new Uint8ClampedArray(colorListBuffer),
     canvas.width,
@@ -107,6 +113,7 @@ function restartIterationWorker() {
   iterationWorker.postMessage({
     canvasSize: [canvas.width, canvas.height],
     mandelbrotCoords: mandelbrotCoords,
+    iterationsPerTick: iterationAmountInput.value,
     command: "start",
   });
   requestWorkerData();
