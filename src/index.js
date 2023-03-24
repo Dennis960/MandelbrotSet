@@ -150,9 +150,10 @@ function onTransformation() {
   ctx2.putImageData(imgData, 0, 0);
 
   ctx.resetTransform();
+  ctx.fillStyle = "black";
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
   ctx.translate(left2, top2);
   ctx.scale(scale, scale);
-  ctx.clearRect(0, 0, canvas.width, canvas.height);
   ctx.drawImage(canvas2, 0, 0);
 }
 
