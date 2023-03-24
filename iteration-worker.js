@@ -6,7 +6,7 @@ let cList = [];
 let zListR = [];
 let zListI = [];
 let nList = [];
-let currentIteration = 1;
+let currentIteration = 0;
 
 // default values
 const escapeRadius = 10;
@@ -40,10 +40,10 @@ function iterateEquation(pixelIndex, iterationsPerTick) {
 /**
  *
  * @param {[number, number]} canvasSize
- * @param {number} iterationsPerTick
  * @param {[number, number, number]} mandelbrotCoords
+ * @param {number} iterationsPerTick
  */
-async function run(canvasSize, iterationsPerTick, mandelbrotCoords) {
+async function run(canvasSize, mandelbrotCoords, iterationsPerTick) {
   const mandelbrotCoordSystem = new CoordSystem(...mandelbrotCoords);
   const mandelbrotTopLeft = mandelbrotCoordSystem.fromViewport(0, 0);
   const mandelbrotBottomRight = mandelbrotCoordSystem.fromViewport(
@@ -63,19 +63,15 @@ async function run(canvasSize, iterationsPerTick, mandelbrotCoords) {
   }
 
   while (true) {
-    currentIteration += iterationsPerTick;
     for (let pixelIndex = 0; pixelIndex < cList.length; pixelIndex++) {
       iterateEquation(pixelIndex, iterationsPerTick);
     }
+    currentIteration += iterationsPerTick;
     await new Promise((resolve) => setTimeout(resolve, 0));
   }
 }
 
-function start(canvasSize, iterationsPerTick, mandelbrotCoords) {
-  run(canvasSize, iterationsPerTick, mandelbrotCoords);
-}
-
-function postColorList() {
+async function postColorList() {
   let colorList = new Uint8Array(nList.length * 4);
   const factor = 255 / currentIteration;
 
@@ -94,10 +90,10 @@ function postColorList() {
 }
 
 onmessage = (e) => {
-  const { canvasSize, iterationsPerTick, mandelbrotCoords, command } = e.data;
+  const { canvasSize, mandelbrotCoords, iterationsPerTick, command } = e.data;
   if (command === "request") {
     postColorList();
   } else if (command === "start") {
-    start(canvasSize, iterationsPerTick, mandelbrotCoords);
+    run(canvasSize, mandelbrotCoords, iterationsPerTick);
   }
 };

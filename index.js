@@ -30,12 +30,21 @@ canvas.height = document.body.clientHeight;
 /**
  * @type {ImageData}
  */
-let img;
+let imgData;
 
-let zoomDebounceTime = 600;
+let transformationDebounceTime = 600;
 
 // coordinate systems
 const mandelbrotCoordSystem = new CoordSystem();
+
+function loadMandelbrotCoordsFromForm() {
+  mandelbrotCoordSystem.scale =
+    Math.min(canvas.width, canvas.height) / 2 / radiusInput.value;
+  mandelbrotCoordSystem.x =
+    canvas.width / 2 - realInput.value * mandelbrotCoordSystem.scale;
+  mandelbrotCoordSystem.y =
+    canvas.height / 2 - imaginaryInput.value * mandelbrotCoordSystem.scale;
+}
 
 function resetMandelbrot() {
   mandelbrotCoordSystem.x = canvas.width / 2;
@@ -44,15 +53,16 @@ function resetMandelbrot() {
   realInput.value = 0;
   imaginaryInput.value = 0;
   radiusInput.value = 2;
-  img = ctx.createImageData(canvas.width, canvas.height);
 }
+
+let lastMandelbrotCoordSystem = null;
 
 /**
  *
  * @param {ArrayBufferLike} colorList
  */
 function drawMandelbrot(colorList) {
-  const imgData = new ImageData(
+  imgData = new ImageData(
     new Uint8ClampedArray(colorList),
     canvas.width,
     canvas.height
@@ -94,8 +104,6 @@ function restartIterationWorker() {
       command: "request",
     });
   }
-  // depending on radiusInput.value
-  let iterationsPerTick = Math.min(Math.ceil(1 / radiusInput.value), 30);
 
   const mandelbrotCoords = [
     mandelbrotCoordSystem.x,
@@ -103,20 +111,40 @@ function restartIterationWorker() {
     mandelbrotCoordSystem.scale,
   ];
 
+  lastMandelbrotCoordSystem = mandelbrotCoordSystem.clone();
+
   iterationWorker.postMessage({
     canvasSize: [canvas.width, canvas.height],
-    iterationsPerTick: iterationsPerTick,
+    iterationsPerTick: 30,
     mandelbrotCoords: mandelbrotCoords,
     command: "start",
   });
   requestWorkerData();
 }
 
-let isMoving = false;
+let transformationDebounceTimeout = null;
 
-function onMoveStart() {
-  isMoving = true;
+function onTransformation() {
   stopIterationWorker();
+  const scale = mandelbrotCoordSystem.scale / lastMandelbrotCoordSystem.scale;
+
+  const [left, top] = lastMandelbrotCoordSystem.fromViewport(0, 0);
+  const [left2, top2] = mandelbrotCoordSystem.toViewport(left, top);
+
+  ctx.resetTransform();
+  ctx.translate(left2, top2);
+  ctx.scale(scale, scale);
+
+  ctx.putImageData(imgData, 0, 0);
+  ctx.drawImage(canvas, 0, 0);
+
+  if (transformationDebounceTimeout) {
+    clearTimeout(transformationDebounceTimeout);
+  }
+  transformationDebounceTimeout = setTimeout(() => {
+    restartIterationWorker();
+    transformationDebounceTimeout = null;
+  }, transformationDebounceTime);
 }
 
 /**
@@ -126,30 +154,14 @@ function onMove(deltaPosition) {
   /**
    * @type {[number, number]}
    */
-  const translate = [-deltaPosition[0], -deltaPosition[1]];
+  let translate = [-deltaPosition[0], -deltaPosition[1]];
 
   mandelbrotCoordSystem.moveOriginRelativeToViewport(...translate);
   [realInput.value, imaginaryInput.value] = mandelbrotCoordSystem.fromViewport(
     canvas.width / 2,
     canvas.height / 2
   );
-
-  ctx.putImageData(img, 0, 0);
-  ctx.translate(...translate);
-  ctx.drawImage(canvas, 0, 0);
-}
-
-function onMoveEnd() {
-  isMoving = false;
-  restartIterationWorker();
-  ctx.resetTransform();
-}
-
-let isZooming = false;
-
-function onZoomStart() {
-  isZooming = true;
-  stopIterationWorker();
+  onTransformation();
 }
 
 /**
@@ -172,42 +184,12 @@ function onZoom(eventPosition, deltaZoom) {
     canvas.width / 2,
     canvas.height / 2
   );
-
-  /**
-   * @type {[number, number]}
-   */
-  let translate = [
-    eventPosition[0] * (1 - zoomFactor),
-    eventPosition[1] * (1 - zoomFactor),
-  ];
-
-  ctx.translate(...translate);
-  ctx.scale(zoomFactor, zoomFactor);
-  ctx.putImageData(img, 0, 0);
-  ctx.drawImage(canvas, 0, 0);
+  onTransformation();
 }
-
-function onZoomEnd() {
-  restartIterationWorker();
-  isZooming = false;
-  ctx.resetTransform();
-}
-
-let wheelDebounceTimer;
 
 // mouse wheel
 document.addEventListener("wheel", (event) => {
-  if (!isZooming) {
-    onZoomStart();
-  }
   onZoom([event.clientX, event.clientY], event.deltaY);
-
-  // draw after some time without using the mouse wheel
-  clearTimeout(wheelDebounceTimer);
-  wheelDebounceTimer = setTimeout(() => {
-    wheelDebounceTimer = null;
-    onZoomEnd();
-  }, zoomDebounceTime);
 });
 
 let lastDistance;
@@ -216,10 +198,6 @@ let lastTouchPosition;
 // touchpad
 document.addEventListener("touchmove", (event) => {
   if (event.touches.length === 2) {
-    if (!isZooming) {
-      onZoomStart();
-      onMoveStart();
-    }
     const touch1 = event.touches[0];
     const touch2 = event.touches[1];
     const touchPosition = [
@@ -231,7 +209,7 @@ document.addEventListener("touchmove", (event) => {
         Math.pow(touch1.clientY - touch2.clientY, 2)
     );
     if (lastDistance) {
-      zoomDebounceTime = 300;
+      transformationDebounceTime = 300;
       onMove([
         lastTouchPosition[0] - touchPosition[0],
         lastTouchPosition[1] - touchPosition[1],
@@ -247,9 +225,6 @@ document.addEventListener("touchmove", (event) => {
     lastTouchPosition = touchPosition;
     lastDistance = distance;
   } else if (event.touches.length == 1) {
-    if (!isMoving) {
-      onMoveStart();
-    }
     if (lastTouchPosition) {
       onMove([
         lastTouchPosition[0] - event.touches[0].clientX,
@@ -262,16 +237,11 @@ document.addEventListener("touchmove", (event) => {
 
 // touch release
 document.addEventListener("touchend", (event) => {
-  if (lastDistance || lastTouchPosition) {
-    onZoomEnd();
-    onMoveEnd();
-    lastDistance = null;
-    lastTouchPosition = null;
-  }
+  lastDistance = null;
+  lastTouchPosition = null;
 });
 
 // mouse drag
-let isDragging = false;
 let lastMousePosition;
 
 document.addEventListener("mousedown", (event) => {
@@ -281,22 +251,11 @@ document.addEventListener("mousedown", (event) => {
 document.addEventListener("mousemove", (event) => {
   // check if mouse is down
   if (event.buttons === 1) {
-    if (!isDragging) {
-      onMoveStart();
-      isDragging = true;
-    }
     onMove([
       lastMousePosition[0] - event.clientX,
       lastMousePosition[1] - event.clientY,
     ]);
     lastMousePosition = [event.clientX, event.clientY];
-  }
-});
-
-document.addEventListener("mouseup", (event) => {
-  if (isDragging) {
-    isDragging = false;
-    onMoveEnd();
   }
 });
 
@@ -310,7 +269,21 @@ window.addEventListener("resize", () => {
 
 infoForm.addEventListener("submit", (event) => {
   event.preventDefault();
+  loadMandelbrotCoordsFromForm();
   restartIterationWorker();
+});
+[
+  "mousedown",
+  "touchstart",
+  "wheel",
+  "touchmove",
+  "mousemove",
+  "touchend",
+  "mouseup",
+].forEach((event) => {
+  infoForm.addEventListener(event, (event) => {
+    event.stopPropagation();
+  });
 });
 
 hideOverlayButton.addEventListener("click", () => {
@@ -319,7 +292,7 @@ hideOverlayButton.addEventListener("click", () => {
 
 resetButton.addEventListener("click", () => {
   resetMandelbrot();
-  onZoomEnd();
+  onTransformationEnd();
 });
 
 resetMandelbrot();
