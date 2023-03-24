@@ -188,7 +188,7 @@ function onZoom(eventPosition, deltaZoom) {
 }
 
 // mouse wheel
-document.addEventListener("wheel", (event) => {
+canvas.addEventListener("wheel", (event) => {
   onZoom([event.clientX, event.clientY], event.deltaY);
 });
 
@@ -196,7 +196,7 @@ let lastDistance;
 let lastTouchPosition;
 
 // touchpad
-document.addEventListener("touchmove", (event) => {
+canvas.addEventListener("touchmove", (event) => {
   if (event.touches.length === 2) {
     const touch1 = event.touches[0];
     const touch2 = event.touches[1];
@@ -236,7 +236,7 @@ document.addEventListener("touchmove", (event) => {
 });
 
 // touch release
-document.addEventListener("touchend", (event) => {
+canvas.addEventListener("touchend", (event) => {
   lastDistance = null;
   lastTouchPosition = null;
 });
@@ -244,11 +244,11 @@ document.addEventListener("touchend", (event) => {
 // mouse drag
 let lastMousePosition;
 
-document.addEventListener("mousedown", (event) => {
+canvas.addEventListener("mousedown", (event) => {
   lastMousePosition = [event.clientX, event.clientY];
 });
 
-document.addEventListener("mousemove", (event) => {
+canvas.addEventListener("mousemove", (event) => {
   // check if mouse is down
   if (event.buttons === 1) {
     onMove([
