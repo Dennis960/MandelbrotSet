@@ -4,6 +4,7 @@ let zListR: f64[] = [];
 let zListI: f64[] = [];
 let nList: u64[] = [];
 let currentIteration: u32 = 0;
+export let colorScheme: u8 = 0;
 
 // default values
 let escapeRadiusSquared: u8 = 4; // escapeRadius * escapeRadius
@@ -36,6 +37,61 @@ export function init(canvasWidth: f64, canvasHeight: f64, x: f64, y: f64, scale:
   }
 
   currentIteration = 0;
+}
+
+// colorF32 is a v128 with 4 f32 values between 0 and 0x00FFFFFF
+function v128GetGrayScale(colorF32: v128): v128 {
+  const color: v128 = v128.trunc_sat<u32>(colorF32); // this will be a u32 with the first byte being 0
+  const splat255: v128 = v128.splat<u8>(255);
+  const colorU8: v128 = v128.shr<u32>(color, 16); // shift the color to the right by 16 bits
+  // red, green, blue, alpha
+  return v128.shuffle<u8>(colorU8, splat255,
+    0, 0, 0, 16,
+    4, 4, 4, 16,
+    8, 8, 8, 16,
+    12, 12, 12, 16);
+}
+
+
+const getColorFunction: ((color: v128) => v128)[] = [
+  v128GetGrayScale
+];
+
+function getColorList(): Uint8Array {
+  let hasLogged: boolean = false;
+  let colorList = new Uint8Array(nList.length * 4);
+  const factor: f32 = 0xFFFFFE / (<f32>currentIteration); // 0xFFFFFE to avoid overflow
+  for (let pixelIndex = 0; pixelIndex < nList.length - 3; pixelIndex += 4) {
+    // load 4 u64 of nList and convert them to 4 u32
+    const nValuesU64_1: v128 = v128.load(nList.dataStart + pixelIndex * 8);
+    const nValuesU64_2: v128 = v128.load(nList.dataStart + (pixelIndex + 2) * 8);
+    const nValuesU32: v128 = v128.shuffle<u32>(nValuesU64_1, nValuesU64_2, 0, 2, 4, 6);
+    const colorValuesF32: v128 = v128.mul<f32>(v128.convert<u32>(nValuesU32), v128.splat<f32>(factor));
+
+    const colorValuesRgba = getColorFunction[colorScheme](colorValuesF32); // convert to rgba
+
+    if (!hasLogged) {
+      console.log();
+      console.log(
+        "input:  "
+        + v128.extract_lane<u32>(colorValuesF32, 0).toString(16).padStart(8, '0') + ' '
+        + v128.extract_lane<u32>(colorValuesF32, 1).toString(16).padStart(8, '0') + ' '
+        + v128.extract_lane<u32>(colorValuesF32, 2).toString(16).padStart(8, '0') + ' '
+        + v128.extract_lane<u32>(colorValuesF32, 3).toString(16).padStart(8, '0') + ' '
+      );
+
+      console.log(
+        "output: "
+        + v128.extract_lane<u32>(colorValuesRgba, 0).toString(16).padStart(8, '0') + ' '
+        + v128.extract_lane<u32>(colorValuesRgba, 1).toString(16).padStart(8, '0') + ' '
+        + v128.extract_lane<u32>(colorValuesRgba, 2).toString(16).padStart(8, '0') + ' '
+        + v128.extract_lane<u32>(colorValuesRgba, 3).toString(16).padStart(8, '0') + ' '
+      );
+      hasLogged = true;
+    }
+    v128.store(colorList.dataStart + pixelIndex * 4, colorValuesRgba);
+  }
+  return colorList;
 }
 
 export function iterateAll(numberOfIterations: u32): ArrayBuffer {
@@ -72,24 +128,5 @@ export function iterateAll(numberOfIterations: u32): ArrayBuffer {
 
   currentIteration += numberOfIterations;
 
-  let colorList = new Uint8Array(nList.length * 4);
-  const factor: f32 = 255.0 / (<f32>currentIteration);
-  for (let pixelIndex = 0; pixelIndex < nList.length - 3; pixelIndex += 4) {
-    // load 4 u64 of nList and convert them to 4 u32
-    const nValues1: v128 = v128.load(nList.dataStart + pixelIndex * 8);
-    const nValues2: v128 = v128.load(nList.dataStart + (pixelIndex + 2) * 8);
-    const nValues: v128 = v128.shuffle<u32>(nValues1, nValues2, 0, 2, 4, 6);
-    const values: v128 = v128.mul<f32>(v128.convert<u32>(nValues), v128.splat<f32>(factor));
-    const valuesAsU32: v128 = v128.trunc_sat<u32>(values);
-    const splat255: v128 = v128.splat<u32>(255);
-    // repeat each byte 3 times and, as fourth bytes, set 255
-    const valueVec: v128 = v128.shuffle<u8>(valuesAsU32, splat255,
-      0, 0, 0, 16,
-      4, 4, 4, 16,
-      8, 8, 8, 16,
-      12, 12, 12, 16)
-    v128.store(colorList.dataStart + pixelIndex * 4, valueVec);
-  }
-
-  return colorList.buffer;
+  return getColorList().buffer;
 }
