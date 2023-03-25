@@ -1,4 +1,5 @@
 import { $ } from "./query.js";
+import { loadKey, putKey } from "./url-state.js";
 
 /**
  * @typedef {Object} NumberInput
@@ -13,7 +14,15 @@ export class NumberInput {
 
   constructor(elementId, defaultValue = 0) {
     this.htmlElement = $(elementId);
-    this.value = defaultValue;
+    const urlValue = loadKey(elementId);
+    if (urlValue !== null) {
+      this.setValueWithoutUrl(Number(urlValue));
+    } else {
+      this.setValueWithoutUrl(defaultValue);
+    }
+    this.htmlElement.addEventListener("input", () => {
+      this.value = this.value;
+    });
   }
 
   /**
@@ -27,6 +36,11 @@ export class NumberInput {
    * @param {number} newValue
    */
   set value(newValue) {
+    this.setValueWithoutUrl(newValue);
+    putKey(this.htmlElement.id, newValue);
+  }
+
+  setValueWithoutUrl(newValue) {
     this.htmlElement.value = newValue;
   }
 }

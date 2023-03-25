@@ -3,13 +3,15 @@
 import { CoordSystem } from "./coord-system.js";
 import { NumberInput } from "./elements.js";
 import { $ } from "./query.js";
+import { addCurrentUrlToHistory } from "./url-state.js";
 
-// html elements
-const radiusInput = new NumberInput("radius");
-const realInput = new NumberInput("real");
-const imaginaryInput = new NumberInput("imaginary");
+// html inputs
+const radiusInput = new NumberInput("radius", 2);
+const realInput = new NumberInput("real", 0);
+const imaginaryInput = new NumberInput("imaginary", 0);
 const iterationAmountInput = new NumberInput("iteration-amount", 10);
 
+// html elements
 const iterationsLabel = $("iterations");
 const infoForm = $("info-form");
 const overlay = $("overlay");
@@ -33,10 +35,15 @@ canvas.height = document.body.clientHeight;
  */
 let imgData;
 
-let transformationDebounceTime = 600;
-
-// coordinate systems
 const mandelbrotCoordSystem = new CoordSystem();
+let lastMandelbrotCoordSystem = null;
+
+let transformationDebounceTime = 600;
+let transformationDebounceTimeout = null;
+
+let lastDistance;
+let lastTouchPosition;
+let lastMousePosition;
 
 function loadMandelbrotCoordsFromForm() {
   mandelbrotCoordSystem.scale =
@@ -56,8 +63,6 @@ function resetMandelbrot() {
   radiusInput.value = 2;
   iterationAmountInput.value = 10;
 }
-
-let lastMandelbrotCoordSystem = null;
 
 /**
  * @param {ArrayBufferLike} colorListBuffer
@@ -80,36 +85,34 @@ const iterationWorker = new Worker("./src/iteration-worker.js", {
   type: "module",
 });
 
+iterationWorker.onmessage = (event) => {
+  iterationsLabel.innerHTML = event.data.currentIteration;
+  drawMandelbrot(event.data.colorListBuffer);
+  requestAnimationFrame(() => {
+    if (transformationDebounceTimeout) return;
+    requestWorkerData();
+  });
+};
+
+iterationWorker.addEventListener("error", (error) => {
+  console.error(error);
+});
+iterationWorker.addEventListener("messageerror", (error) => {
+  console.error(error);
+});
+
+function requestWorkerData() {
+  iterationWorker.postMessage({
+    command: "request",
+  });
+}
+
 function restartIterationWorker() {
-  iterationWorker.onmessage = (event) => {
-    iterationsLabel.innerHTML = event.data.currentIteration;
-    drawMandelbrot(event.data.colorListBuffer);
-    requestAnimationFrame(() => {
-      if (transformationDebounceTimeout) return;
-      requestWorkerData();
-    });
-  };
-
-  iterationWorker.addEventListener("error", (error) => {
-    console.error(error);
-  });
-  iterationWorker.addEventListener("messageerror", (error) => {
-    console.error(error);
-  });
-
-  function requestWorkerData() {
-    iterationWorker.postMessage({
-      command: "request",
-    });
-  }
-
   const mandelbrotCoords = [
     mandelbrotCoordSystem.x,
     mandelbrotCoordSystem.y,
     mandelbrotCoordSystem.scale,
   ];
-
-  lastMandelbrotCoordSystem = mandelbrotCoordSystem.clone();
 
   iterationWorker.postMessage({
     canvasSize: [canvas.width, canvas.height],
@@ -117,15 +120,14 @@ function restartIterationWorker() {
     iterationsPerTick: iterationAmountInput.value,
     command: "start",
   });
-  requestWorkerData();
 }
-
-let transformationDebounceTimeout = null;
 
 function onTransformation() {
   if (transformationDebounceTimeout) {
     clearTimeout(transformationDebounceTimeout);
   } else {
+    addCurrentUrlToHistory();
+    lastMandelbrotCoordSystem = mandelbrotCoordSystem.clone();
     iterationWorker.postMessage({
       command: "stop",
     });
@@ -134,6 +136,11 @@ function onTransformation() {
     restartIterationWorker();
     transformationDebounceTimeout = null;
   }, transformationDebounceTime);
+
+  if (!imgData) {
+    // no need to draw if there is no image data
+    return;
+  }
 
   const scale = mandelbrotCoordSystem.scale / lastMandelbrotCoordSystem.scale;
 
@@ -203,9 +210,6 @@ canvas.addEventListener("wheel", (event) => {
   onZoom([event.clientX, event.clientY], event.deltaY);
 });
 
-let lastDistance;
-let lastTouchPosition;
-
 // touchpad
 canvas.addEventListener("touchmove", (event) => {
   if (event.touches.length === 2) {
@@ -252,9 +256,6 @@ canvas.addEventListener("touchend", (event) => {
   lastTouchPosition = null;
 });
 
-// mouse drag
-let lastMousePosition;
-
 canvas.addEventListener("mousedown", (event) => {
   lastMousePosition = [event.clientX, event.clientY];
 });
@@ -290,7 +291,6 @@ infoForm.addEventListener("submit", (event) => {
   "touchmove",
   "mousemove",
   "touchend",
-  "mouseup",
 ].forEach((event) => {
   infoForm.addEventListener(event, (event) => {
     event.stopPropagation();
@@ -306,5 +306,5 @@ resetButton.addEventListener("click", () => {
   restartIterationWorker();
 });
 
-resetMandelbrot();
+loadMandelbrotCoordsFromForm();
 restartIterationWorker();
