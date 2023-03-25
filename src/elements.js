@@ -16,12 +16,12 @@ export class NumberInput {
     this.htmlElement = $(elementId);
     const urlValue = loadKey(elementId);
     if (urlValue !== null) {
-      this.setValueWithoutUrl(Number(urlValue));
+      this.htmlElement.value = urlValue;
     } else {
-      this.setValueWithoutUrl(defaultValue);
+      this.htmlElement.value = defaultValue;
     }
     this.htmlElement.addEventListener("input", () => {
-      this.value = this.value;
+      putKey(this.htmlElement.id, this.value);
     });
   }
 
@@ -36,11 +36,7 @@ export class NumberInput {
    * @param {number} newValue
    */
   set value(newValue) {
-    this.setValueWithoutUrl(newValue);
-    putKey(this.htmlElement.id, newValue);
-  }
-
-  setValueWithoutUrl(newValue) {
     this.htmlElement.value = newValue;
+    putKey(this.htmlElement.id, newValue);
   }
 }
