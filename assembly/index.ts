@@ -43,8 +43,9 @@ export function init(canvasWidth: f64, canvasHeight: f64, x: f64, y: f64, scale:
   currentIteration = 0;
 }
 
-// colorU8 is a v128 with 4 u32 values between 0 and 255
-function v128GetGrayScale(colorU8: v128): v128 {
+// valuesF32 is a v128 with 4 f32 values between 0 and 1
+function v128GetGrayScale(valuesF32: v128): v128 {
+  const colorU8: v128 = v128.trunc_sat<u32>(v128.mul<f32>(valuesF32, v128.splat<f32>(255))); // values between 0 and 255
   const splat255: v128 = v128.splat<u8>(255);
   // red, green, blue, alpha
   return v128.shuffle<u8>(colorU8, splat255,
@@ -54,8 +55,72 @@ function v128GetGrayScale(colorU8: v128): v128 {
     12, 12, 12, 16);
 }
 
-const getColorFunction: ((colorU8: v128) => v128)[] = [
+function v128GetGrayScaleSquared(valuesF32: v128): v128 {
+  const f32Sqrt: v128 = v128.sqrt<f32>(valuesF32); // values between 0 and 1 but squared
+  const u32: v128 = v128.trunc_sat<u32>(v128.mul<f32>(f32Sqrt, v128.splat<f32>(255))); // values between 0 and 255
+  const splat255: v128 = v128.splat<u8>(255);
+  // red, green, blue, alpha
+  return v128.shuffle<u8>(u32, splat255,
+    0, 0, 0, 16,
+    4, 4, 4, 16,
+    8, 8, 8, 16,
+    12, 12, 12, 16);
+}
+
+function v128modf32(a: v128, b: v128): v128 {
+  return v128.sub<f32>(a, v128.mul<f32>(b, v128.floor<f32>(v128.div<f32>(a, b))));
+}
+
+function v128GetRgbScale(valuesF32: v128): v128 {
+  const h = v128.mul<f32>(valuesF32, v128.splat<f32>(360)); // values between 0 and 360
+  const s = v128.splat<f32>(1); // 100%
+  const v = v128.splat<f32>(1); // 100%
+
+  const c = v128.mul<f32>(v, s);
+  const x = v128.mul<f32>(c, v128.sub<f32>(v128.splat<f32>(1), v128.abs<f32>(v128.sub<f32>(v128modf32(v128.div<f32>(h, v128.splat<f32>(60)), v128.splat<f32>(2)), v128.splat<f32>(1)))));
+  const m = v128.sub<f32>(v, c);
+
+  const mask0_60 = v128.and(v128.lt<f32>(h, v128.splat<f32>(60)), v128.ge<f32>(h, v128.splat<f32>(0)));
+  const mask60_120 = v128.and(v128.lt<f32>(h, v128.splat<f32>(120)), v128.ge<f32>(h, v128.splat<f32>(60)));
+  const mask120_180 = v128.and(v128.lt<f32>(h, v128.splat<f32>(180)), v128.ge<f32>(h, v128.splat<f32>(120)));
+  const mask180_240 = v128.and(v128.lt<f32>(h, v128.splat<f32>(240)), v128.ge<f32>(h, v128.splat<f32>(180)));
+  const mask240_300 = v128.and(v128.lt<f32>(h, v128.splat<f32>(300)), v128.ge<f32>(h, v128.splat<f32>(240)));
+  const mask300_360 = v128.and(v128.lt<f32>(h, v128.splat<f32>(360)), v128.ge<f32>(h, v128.splat<f32>(300)));
+
+  let r = v128.or(v128.and(mask0_60, v128.add<f32>(c, m)), v128.and(mask300_360, v128.add<f32>(c, m)));
+  r = v128.or(v128.and(mask240_300, v128.add<f32>(x, m)), r);
+  r = v128.or(v128.and(mask180_240, v128.add<f32>(x, m)), r);
+  let g = v128.or(v128.and(mask60_120, v128.add<f32>(c, m)), v128.and(mask0_60, v128.add<f32>(x, m)));
+  g = v128.or(v128.and(mask300_360, v128.add<f32>(x, m)), g);
+  g = v128.or(v128.and(mask240_300, v128.add<f32>(c, m)), g);
+  let b = v128.or(v128.and(mask120_180, v128.add<f32>(x, m)), v128.and(mask60_120, v128.add<f32>(c, m)));
+  b = v128.or(v128.and(mask0_60, v128.add<f32>(c, m)), b);
+  b = v128.or(v128.and(mask300_360, v128.add<f32>(c, m)), b);
+
+  r = v128.mul<f32>(r, v128.splat<f32>(255));
+  g = v128.mul<f32>(g, v128.splat<f32>(255));
+  b = v128.mul<f32>(b, v128.splat<f32>(255));
+
+  const u32r: v128 = v128.trunc_sat<u32>(r);
+  let u32g: v128 = v128.trunc_sat<u32>(g);
+  u32g = v128.shl<u32>(u32g, 8);
+  let u32b: v128 = v128.trunc_sat<u32>(b);
+  u32b = v128.shl<u32>(u32b, 16);
+  const u32a: v128 = v128.shl<u32>(v128.splat<u32>(255), 24);
+
+  return v128.or(v128.or(u32r, u32g), v128.or(u32b, u32a));
+}
+
+function v128GetRgbScaleSqared(valuesF32: v128): v128 {
+  const f32Sqrt: v128 = v128.sqrt<f32>(valuesF32); // values between 0 and 1 but squared
+  return v128GetRgbScale(f32Sqrt);
+}
+
+const getColorFunction: ((valuesF32: v128) => v128)[] = [
   v128GetGrayScale,
+  v128GetGrayScaleSquared,
+  v128GetRgbScale,
+  v128GetRgbScaleSqared
 ];
 
 function getColorList(): Uint8Array {
@@ -67,9 +132,8 @@ function getColorList(): Uint8Array {
     const nValuesU32: v128 = v128.shuffle<u32>(nValuesU64_1, nValuesU64_2, 0, 2, 4, 6);
 
     const valuesF32: v128 = v128.div<f32>(v128.convert<u32>(nValuesU32), v128.splat<f32>(<f32>currentIteration)); // values between 0 and 1
-    const colorU8: v128 = v128.trunc_sat<u32>(v128.mul<f32>(valuesF32, v128.splat<f32>(255))); // values between 0 and 255
 
-    const colorValuesRgba = getColorFunction[colorScheme](colorU8); // convert to rgba
+    const colorValuesRgba = getColorFunction[colorScheme](valuesF32); // convert to rgba
     v128.store(colorList.dataStart + pixelIndex * 4, colorValuesRgba);
   }
   return colorList;
