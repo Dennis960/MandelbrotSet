@@ -38,6 +38,7 @@ onmessage = (e) => {
     postColorList();
   } else if (command === "start") {
     start(canvasSize, mandelbrotCoords, iterationsPerTick);
+    postColorList();
   } else if (command === "stop") {
     currentWorkerId++;
   }
