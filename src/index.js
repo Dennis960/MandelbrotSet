@@ -46,6 +46,8 @@ let lastDistance;
 let lastTouchPosition;
 let lastMousePosition;
 
+let hasIterationWorkerStarted = false;
+
 function loadMandelbrotCoordsFromForm() {
   canvas.width = window.innerWidth;
   canvas.height = window.innerHeight;
@@ -92,6 +94,7 @@ const iterationWorker = new Worker("./src/iteration-worker.js", {
 });
 
 iterationWorker.onmessage = (event) => {
+  hasIterationWorkerStarted = true;
   iterationsLabel.innerHTML = event.data.currentIteration;
   drawMandelbrot(event.data.colorListBuffer);
   requestAnimationFrame(() => {
@@ -127,6 +130,15 @@ function restartIterationWorker() {
     iterationsPerTick: iterationAmountInput.value,
     command: "start",
   });
+
+  // quickfix to restart every 500 ms until event was received
+  if (!hasIterationWorkerStarted) {
+    new Promise((resolve) => setTimeout(resolve, 500)).then(() => {
+      if (!hasIterationWorkerStarted) {
+        restartIterationWorker();
+      }
+    });
+  }
 }
 
 function onTransformation() {
