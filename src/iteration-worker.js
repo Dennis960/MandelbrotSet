@@ -1,6 +1,6 @@
 // @ts-check
 
-import { init, iterateAll } from "../build/release.js";
+import { init, iterateAll, setColorScheme } from "../build/release.js";
 
 let currentIteration = 0;
 let colorListBuffer;
@@ -33,7 +33,16 @@ async function start(canvasSize, mandelbrotCoords, iterationsPerTick) {
 }
 
 onmessage = (e) => {
-  const { canvasSize, mandelbrotCoords, iterationsPerTick, command } = e.data;
+  const {
+    canvasSize,
+    mandelbrotCoords,
+    iterationsPerTick,
+    command,
+    colorScheme,
+  } = e.data;
+  if (colorScheme !== undefined) {
+    setColorScheme(colorScheme);
+  }
   if (command === "request") {
     postColorList();
   } else if (command === "start") {

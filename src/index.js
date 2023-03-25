@@ -10,6 +10,7 @@ const radiusInput = new NumberInput("radius", 2);
 const realInput = new NumberInput("real", 0);
 const imaginaryInput = new NumberInput("imaginary", 0);
 const iterationAmountInput = new NumberInput("iteration-amount", 10);
+const colorSchemeSelect = new NumberInput("color-scheme", 1);
 
 // html elements
 const iterationsLabel = $("iterations");
@@ -62,6 +63,7 @@ function resetMandelbrot() {
   imaginaryInput.value = 0;
   radiusInput.value = 2;
   iterationAmountInput.value = 10;
+  colorSchemeSelect.value = 0;
 }
 
 /**
@@ -104,6 +106,7 @@ iterationWorker.addEventListener("messageerror", (error) => {
 function requestWorkerData() {
   iterationWorker.postMessage({
     command: "request",
+    colorScheme: colorSchemeSelect.value,
   });
 }
 

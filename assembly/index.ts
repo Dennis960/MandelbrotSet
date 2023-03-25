@@ -4,11 +4,15 @@ let zListR: f64[] = [];
 let zListI: f64[] = [];
 let nList: u64[] = [];
 let currentIteration: u32 = 0;
-export let colorScheme: u8 = 0;
+let colorScheme: u8 = 0;
 
 // default values
 let escapeRadiusSquared: u8 = 4; // escapeRadius * escapeRadius
 const escapeRadiusSplat: v128 = v128.splat<f64>(escapeRadiusSquared);
+
+export function setColorScheme(newColorScheme: u8): void {
+  colorScheme = newColorScheme;
+}
 
 export function init(canvasWidth: f64, canvasHeight: f64, x: f64, y: f64, scale: f64): void {
   const rRangeStart: f64 = (0 - x) / scale;
@@ -39,11 +43,9 @@ export function init(canvasWidth: f64, canvasHeight: f64, x: f64, y: f64, scale:
   currentIteration = 0;
 }
 
-// colorF32 is a v128 with 4 f32 values between 0 and 0x00FFFFFF
-function v128GetGrayScale(colorF32: v128): v128 {
-  const color: v128 = v128.trunc_sat<u32>(colorF32); // this will be a u32 with the first byte being 0
+// colorU8 is a v128 with 4 u32 values between 0 and 255
+function v128GetGrayScale(colorU8: v128): v128 {
   const splat255: v128 = v128.splat<u8>(255);
-  const colorU8: v128 = v128.shr<u32>(color, 16); // shift the color to the right by 16 bits
   // red, green, blue, alpha
   return v128.shuffle<u8>(colorU8, splat255,
     0, 0, 0, 16,
@@ -52,43 +54,22 @@ function v128GetGrayScale(colorF32: v128): v128 {
     12, 12, 12, 16);
 }
 
-
-const getColorFunction: ((color: v128) => v128)[] = [
-  v128GetGrayScale
+const getColorFunction: ((colorU8: v128) => v128)[] = [
+  v128GetGrayScale,
 ];
 
 function getColorList(): Uint8Array {
-  let hasLogged: boolean = false;
   let colorList = new Uint8Array(nList.length * 4);
-  const factor: f32 = 0xFFFFFE / (<f32>currentIteration); // 0xFFFFFE to avoid overflow
   for (let pixelIndex = 0; pixelIndex < nList.length - 3; pixelIndex += 4) {
     // load 4 u64 of nList and convert them to 4 u32
     const nValuesU64_1: v128 = v128.load(nList.dataStart + pixelIndex * 8);
     const nValuesU64_2: v128 = v128.load(nList.dataStart + (pixelIndex + 2) * 8);
     const nValuesU32: v128 = v128.shuffle<u32>(nValuesU64_1, nValuesU64_2, 0, 2, 4, 6);
-    const colorValuesF32: v128 = v128.mul<f32>(v128.convert<u32>(nValuesU32), v128.splat<f32>(factor));
 
-    const colorValuesRgba = getColorFunction[colorScheme](colorValuesF32); // convert to rgba
+    const valuesF32: v128 = v128.div<f32>(v128.convert<u32>(nValuesU32), v128.splat<f32>(<f32>currentIteration)); // values between 0 and 1
+    const colorU8: v128 = v128.trunc_sat<u32>(v128.mul<f32>(valuesF32, v128.splat<f32>(255))); // values between 0 and 255
 
-    if (!hasLogged) {
-      console.log();
-      console.log(
-        "input:  "
-        + v128.extract_lane<u32>(colorValuesF32, 0).toString(16).padStart(8, '0') + ' '
-        + v128.extract_lane<u32>(colorValuesF32, 1).toString(16).padStart(8, '0') + ' '
-        + v128.extract_lane<u32>(colorValuesF32, 2).toString(16).padStart(8, '0') + ' '
-        + v128.extract_lane<u32>(colorValuesF32, 3).toString(16).padStart(8, '0') + ' '
-      );
-
-      console.log(
-        "output: "
-        + v128.extract_lane<u32>(colorValuesRgba, 0).toString(16).padStart(8, '0') + ' '
-        + v128.extract_lane<u32>(colorValuesRgba, 1).toString(16).padStart(8, '0') + ' '
-        + v128.extract_lane<u32>(colorValuesRgba, 2).toString(16).padStart(8, '0') + ' '
-        + v128.extract_lane<u32>(colorValuesRgba, 3).toString(16).padStart(8, '0') + ' '
-      );
-      hasLogged = true;
-    }
+    const colorValuesRgba = getColorFunction[colorScheme](colorU8); // convert to rgba
     v128.store(colorList.dataStart + pixelIndex * 4, colorValuesRgba);
   }
   return colorList;
@@ -103,7 +84,7 @@ export function iterateAll(numberOfIterations: u32): ArrayBuffer {
 
     let mask: v128 = v128.le<f64>(v128.add<f64>(sR, sI), escapeRadiusSplat); // compare sR + sI with escapeRadiusSquared using SIMD
 
-    if (!v128.any_true(mask)) { // check if any of the 2 comparisons is true
+    if (!v128.any_true(mask)) { // check if any of the 2 comparisons are true
       continue;
     }
 
@@ -115,15 +96,19 @@ export function iterateAll(numberOfIterations: u32): ArrayBuffer {
       zR = v128.add<f64>(v128.sub<f64>(sR, sI), cListRValue); // calculate zR using SIMD
       sR = v128.mul<f64>(zR, zR); // square zR using SIMD
       sI = v128.mul<f64>(zI, zI); // square zI using SIMD
+
+      if (!v128.any_true(v128.le<f64>(v128.add<f64>(sR, sI), escapeRadiusSplat))) { // check if any of the 2 comparisons are true
+        break;
+      }
+
+      mask = v128.and(mask, v128.le<f64>(v128.add<f64>(sR, sI), escapeRadiusSplat)); // compare sR + sI with escapeRadiusSquared using SIMD
+      const nValue: v128 = v128.load(nList.dataStart + pixelIndex * 8); // load 2 u64 of nList
+      const nValueIncremented: v128 = v128.add<u64>(nValue, v128.and(mask, v128.splat<u64>(1))); // increment nValue by numberOfIterations if mask is true
+      v128.store(nList.dataStart + pixelIndex * 8, nValueIncremented); // store 2 u64 of nList
     }
 
     v128.store(zListR.dataStart + pixelIndex * 8, zR); // store 2 f64 of zR
     v128.store(zListI.dataStart + pixelIndex * 8, zI); // store 2 f64 of zI
-
-    const nValue: v128 = v128.load(nList.dataStart + pixelIndex * 8); // load 2 u64 of nList
-    const nValueIncrement: v128 = v128.splat<u64>(numberOfIterations); // create a vector with 2 times the same value
-    const nValueIncremented: v128 = v128.add<u64>(nValue, v128.and(mask, nValueIncrement)); // increment nValue by numberOfIterations if mask is true
-    v128.store(nList.dataStart + pixelIndex * 8, nValueIncremented); // store 2 u64 of nList
   }
 
   currentIteration += numberOfIterations;
