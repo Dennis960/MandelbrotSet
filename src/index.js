@@ -47,6 +47,8 @@ let lastTouchPosition;
 let lastMousePosition;
 
 function loadMandelbrotCoordsFromForm() {
+  canvas.width = window.innerWidth;
+  canvas.height = window.innerHeight;
   mandelbrotCoordSystem.scale =
     Math.min(canvas.width, canvas.height) / 2 / radiusInput.value;
   mandelbrotCoordSystem.x =
@@ -56,6 +58,8 @@ function loadMandelbrotCoordsFromForm() {
 }
 
 function resetMandelbrot() {
+  canvas.width = window.innerWidth;
+  canvas.height = window.innerHeight;
   mandelbrotCoordSystem.x = canvas.width / 2;
   mandelbrotCoordSystem.y = canvas.height / 2;
   mandelbrotCoordSystem.scale = Math.min(canvas.width, canvas.height) / 4;
@@ -272,14 +276,6 @@ canvas.addEventListener("mousemove", (event) => {
     ]);
     lastMousePosition = [event.clientX, event.clientY];
   }
-});
-
-// listener when window is resized
-window.addEventListener("resize", () => {
-  canvas.width = window.innerWidth;
-  canvas.height = window.innerHeight;
-  resetMandelbrot();
-  restartIterationWorker();
 });
 
 infoForm.addEventListener("submit", (event) => {
