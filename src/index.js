@@ -10,7 +10,7 @@ const radiusInput = new NumberInput("radius", 2);
 const realInput = new NumberInput("real", 0);
 const imaginaryInput = new NumberInput("imaginary", 0);
 const iterationAmountInput = new NumberInput("iteration-amount", 10);
-const colorSchemeSelect = new NumberInput("color-scheme", 1);
+const colorSchemeSelect = new NumberInput("color-scheme", 0);
 
 // html elements
 const iterationsLabel = $("iterations");
