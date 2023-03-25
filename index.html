@@ -10,7 +10,6 @@
   </head>
   <body>
     <canvas id="canvas" width="0" height="0"> </canvas>
-    <div id="overlay">
       <form id="info-form">
         <table>
           <tr>
@@ -62,12 +61,21 @@
         </table>
         <div class="button-container">
           <button type="submit">Draw</button>
-          <button type="button" id="hide-overlay-button">Hide ui</button>
           <button type="button" id="reset-button">Reset</button>
+        </div>
+        <div id="hide-overlay-button">
+          <svg class="arrow up-left" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24">
+            <path d="M6 18l-6-6 6-6" fill="none" stroke="#000" stroke-width="2"/>
+          </svg>
         </div>
       </form>
     </div>
     <footer>
+      <div id="show-overlay-button">
+          <svg class="arrow down-right" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24">
+            <path d="M16 18l-6-6 6-6" fill="none" stroke="#000" stroke-width="2"/>
+          </svg>
+      </div>
       <p>
         Made by Dennis. Code on
         <a href="https://github.com/Dennis960/MandelbrotSet">github</a>
@@ -83,15 +91,21 @@
     }
     #info-form {
       position: fixed;
-      padding: 10px;
-      margin: 10px;
-      border-radius: 5px;
-      top: 0;
-      left: 0;
       display: flex;
+      padding: 10px;
+      border-radius: 5px;
+      top: 10px;
+      left: 10px;
       flex-direction: column;
       align-items: start;
       background-color: white;
+      scale: 0.1;
+      transform-origin: top left;
+      transition: scale 0.2s ease-in-out;
+    }
+    #info-form.visible {
+      display: flex;
+      scale: 1;
     }
     footer {
       position: fixed;
@@ -107,6 +121,45 @@
       flex-direction: row;
       gap: 10px;
       margin-top: 5px;
+    }
+
+    #show-overlay-button,
+    #hide-overlay-button {
+      width: 21px;
+      height: 17px;
+      padding: 10px;
+      cursor: pointer;
+      border-radius: 5px;
+    }
+    #show-overlay-button {
+      position: fixed;
+      top: 10px;
+      left: 10px;
+      background-color: white;
+    }
+    #hide-overlay-button {
+      position: absolute;
+      bottom: 0px;
+      right: 0px;
+    }
+
+    .bar {
+      width: 100%;
+      height: 3px;
+      border-radius: 3px;
+      background-color: #000;
+    }
+    .arrow {
+      display: inline-block;
+      stroke-width: 2px;
+      fill: none;
+      stroke: black;
+    }
+    .up-left {
+      transform: rotate(45deg);
+    }
+    .down-right {
+      transform: rotate(225deg);
     }
   </style>
   <script src="./src/index.js" type="module"></script>

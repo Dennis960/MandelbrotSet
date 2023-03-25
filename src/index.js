@@ -15,9 +15,10 @@ const colorSchemeSelect = new NumberInput("color-scheme", 0);
 // html elements
 const iterationsLabel = $("iterations");
 const infoForm = $("info-form");
-const overlay = $("overlay");
 const hideOverlayButton = $("hide-overlay-button");
 const resetButton = $("reset-button");
+const showOverlayButton = $("show-overlay-button");
+
 /**
  * @type {HTMLCanvasElement}
  */
@@ -309,7 +310,13 @@ infoForm.addEventListener("submit", (event) => {
 });
 
 hideOverlayButton.addEventListener("click", () => {
-  overlay.style.display = "none";
+  infoForm.classList.remove("visible");
+  showOverlayButton.style.display = "block";
+});
+
+showOverlayButton.addEventListener("click", () => {
+  infoForm.classList.add("visible");
+  showOverlayButton.style.display = "none";
 });
 
 resetButton.addEventListener("click", () => {
