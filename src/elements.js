@@ -1,33 +1,40 @@
+// @ts-check
+
 import { $ } from "./query.js";
 import { loadKey, putKey } from "./url-state.js";
 
 /**
- * @typedef {Object} NumberInput
  * @property {HTMLElement} htmlElement
  * @property {number} value
  */
 export class NumberInput {
   /**
-   * @type {HTMLElement}
+   * @type {HTMLInputElement}
    */
   htmlElement;
 
   /**
    * Callback for when the value changes
-   * @type {(number) => void}
+   * @type {((newValue: number) => void) | undefined}
    */
   onChange;
 
+  /**
+   *
+   * @param {String} elementId
+   * @param {number} defaultValue
+   */
   constructor(elementId, defaultValue = 0) {
     this.htmlElement = $(elementId);
     const urlValue = loadKey(elementId);
     if (urlValue !== null) {
       this.htmlElement.value = urlValue;
     } else {
-      this.htmlElement.value = defaultValue;
+      this.htmlElement.value = defaultValue.toString();
     }
     this.htmlElement.addEventListener("input", () => {
       putKey(this.htmlElement.id, this.value);
+      if (this.onChange) this.onChange(this.value);
     });
   }
 
@@ -42,8 +49,8 @@ export class NumberInput {
    * @param {number} newValue
    */
   set value(newValue) {
-    if (this.onChange) onChange(newValue);
-    this.htmlElement.value = newValue;
+    if (this.onChange) this.onChange(newValue);
+    this.htmlElement.value = newValue.toString();
     putKey(this.htmlElement.id, newValue);
   }
 }

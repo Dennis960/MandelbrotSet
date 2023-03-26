@@ -1,7 +1,9 @@
+// @ts-check
+
 /**
  *
  * @param {string} id
- * @returns {T extends HTMLElement}
+ * @returns {any}
  */
 export function $(id) {
   return document.getElementById(id);

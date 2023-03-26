@@ -1,3 +1,5 @@
+// @ts-check
+
 /**
  * Loads the key from url params
  *
