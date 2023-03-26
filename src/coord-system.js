@@ -1,3 +1,5 @@
+// @ts-check
+
 /**
  * Coordinate System with origin coordinates relative to the viewport
  * Scale relative to the viewport (scale of 1 means 1 pixel = 1 unit)
@@ -10,18 +12,30 @@
 export class CoordSystem {
   /**
    * x coordinate of the origin relative to the viewport
+   *
+   * @type {number}
    */
   x;
   /**
    * y coordinate of the origin relative to the viewport
+   *
+   * @type {number}
    */
   y;
   /**
    * Scale relative to the viewport (scale of 1 means 1 pixel = 1 unit)
    * Also the number of units per pixel
+   *
+   * @type {number}
    */
   scale;
 
+  /**
+   *
+   * @param {number} x
+   * @param {number} y
+   * @param {number} scale
+   */
   constructor(x = 0, y = 0, scale = 1) {
     this.set(x, y, scale);
   }
@@ -106,19 +120,6 @@ export class CoordSystem {
   }
 
   /**
-   * Converts coordinates from one coordinate system to another
-   *
-   * @param {number} x
-   * @param {number} y
-   * @param {CoordSystem} otherCoordSystem
-   * @returns {number[]} [x, y] in the other coordinate system
-   */
-  fromCoordSystem(x, y, otherCoordSystem) {
-    const [x1, y1] = this.toViewport(x, y);
-    return otherCoordSystem.fromViewport(x1, y1);
-  }
-
-  /**
    * Gets the distance between two points in the coordinate system
    *
    * @param {number} x1
@@ -129,22 +130,6 @@ export class CoordSystem {
    */
   distance(x1, y1, x2, y2) {
     return Math.sqrt((x1 - x2) ** 2 + (y1 - y2) ** 2);
-  }
-
-  /**
-   * Gets the distance between two points in the viewport
-   *
-   * @param {number} x1
-   * @param {number} y1
-   * @param {number} x2
-   * @param {number} y2
-   * @returns {number} distance between the two points in the viewport
-   */
-  distanceInViewport(x1, y1, x2, y2) {
-    return this.distance(
-      ...this.fromViewport(x1, y1),
-      ...this.fromViewport(x2, y2)
-    );
   }
 
   /**
@@ -163,14 +148,5 @@ export class CoordSystem {
    */
   clone() {
     return new CoordSystem(this.x, this.y, this.scale);
-  }
-
-  /**
-   * Copies the values from another coordinate system
-   *
-   * @param {CoordSystem} otherCoordSystem
-   */
-  cloneFrom(otherCoordSystem) {
-    this.set(otherCoordSystem.x, otherCoordSystem.y, otherCoordSystem.scale);
   }
 }

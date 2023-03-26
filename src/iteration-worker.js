@@ -46,6 +46,7 @@ onmessage = (e) => {
   if (command === "request") {
     postColorList();
   } else if (command === "start") {
+    postMessage({ command: "started" });
     start(canvasSize, mandelbrotCoords, iterationsPerTick);
   } else if (command === "stop") {
     currentWorkerId++;
