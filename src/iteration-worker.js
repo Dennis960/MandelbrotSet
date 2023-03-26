@@ -13,6 +13,7 @@ async function postColorList() {
 }
 
 let currentWorkerId = 0;
+let waitTime = 0;
 
 async function start(canvasSize, mandelbrotCoords, iterationsPerTick) {
   const workerID = ++currentWorkerId;
@@ -29,6 +30,10 @@ async function start(canvasSize, mandelbrotCoords, iterationsPerTick) {
     colorListBuffer = iterateAll(iterationsPerTick);
     currentIteration += iterationsPerTick;
     await new Promise((resolve) => setTimeout(resolve, 0));
+    if (waitTime > 0) {
+      await new Promise((resolve) => setTimeout(resolve, waitTime));
+      waitTime = 0;
+    }
   }
 }
 
@@ -39,9 +44,13 @@ onmessage = (e) => {
     iterationsPerTick,
     command,
     colorScheme,
+    syncTime,
   } = e.data;
   if (colorScheme !== undefined) {
     setColorScheme(colorScheme);
+  }
+  if (syncTime !== undefined) {
+    waitTime = syncTime;
   }
   if (command === "request") {
     postColorList();
