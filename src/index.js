@@ -16,7 +16,6 @@ const iterationAmountInput = new NumberInput("iteration-amount", 50);
 const threadsInput = new NumberInput("threads", maxNumberOfThreads);
 const debounceTimeInput = new NumberInput("debounce-time", defaultDebounceTime);
 const fpsInput = new NumberInput("fps", 60);
-const syncThresholdInput = new NumberInput("sync-threshold", -1);
 const colorSchemeSelect = new NumberInput("color-scheme", 0);
 
 // html elements
@@ -93,35 +92,12 @@ function resetMandelbrot() {
   colorSchemeSelect.value = 0;
 }
 
-/**
- * calculates the sync time for a worker based on the iteration
- * difference between the workers and the average iteration
- * amount of all workers and the threshold
- * @param {number} workerIndex
- * @returns {number} syncTime
- */
-function calculateSyncTime(workerIndex) {
-  const threshold = iterationAmountInput.value * syncThresholdInput.value;
-  if (threshold === -1) return 0;
-  const averageIterations =
-    iterations.reduce((a, b) => a + b, 0) / iterations.length;
-  const iterationDifference = Math.max(...iterations) - Math.min(...iterations);
-  const doesDifferenceExceedThreshold = iterationDifference > threshold;
-  const differenceToMax = Math.max(...iterations) - iterations[workerIndex];
-  const isAboveAverage = iterations[workerIndex] > averageIterations;
-  const caluculatedSyncTime = iterationDifference - differenceToMax;
-  return isAboveAverage && doesDifferenceExceedThreshold
-    ? caluculatedSyncTime
-    : 0;
-}
-
 function requestAllWorkers() {
   for (let i = 0; i < workerList.length; i++) {
     const iterationWorker = workerList[i].worker;
     iterationWorker.postMessage({
       command: "request",
       colorScheme: colorSchemeSelect.value,
-      syncTime: calculateSyncTime(i),
     });
   }
 }
