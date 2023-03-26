@@ -14,6 +14,12 @@ async function postColorList() {
 
 let currentWorkerId = 0;
 
+/**
+ *
+ * @param {[number, number]} canvasSize
+ * @param {[number, number, number]} mandelbrotCoords
+ * @param {number} iterationsPerTick
+ */
 async function start(canvasSize, mandelbrotCoords, iterationsPerTick) {
   const workerID = ++currentWorkerId;
   currentIteration = 0;
