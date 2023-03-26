@@ -10,71 +10,116 @@
   </head>
   <body>
     <canvas id="canvas" width="0" height="0"> </canvas>
-      <form id="info-form">
-        <table>
-          <tr>
-            <td>Iterations</td>
-            <td id="iterations">100</td>
-          </tr>
-          <tr>
-            <td>Radius</td>
-            <td>
-              <input type="number" step="any" id="radius" value="" />
-            </td>
-          </tr>
-          <tr>
-            <td>Center real</td>
-            <td>
-              <input type="number" step="any" id="real" value="" />
-            </td>
-          </tr>
-          <tr>
-            <td>Center imaginary</td>
-            <td>
-              <input type="number" step="any" id="imaginary" value="" />
-            </td>
-          </tr>
-          <tr>
-            <td>Iterations per tick</td>
-            <td>
-              <input
-                type="number"
-                step="1"
-                id="iteration-amount"
-                value=""
-                min="1"
-              />
-            </td>
-          </tr>
-          <tr>
-            <td>Color scheme</td>
-            <td>
-              <select id="color-scheme">
-                <option value="0">Default</option>
-                <option value="1">Sqrt</option>
-                <option value="2">Sqrt Sqrt</option>
-                <option value="3">Rgb</option>
-                <option value="4">Rgb Sqrt</option>
-              </select>
-            </td>
-          </tr>
-        </table>
-        <div class="button-container">
-          <button type="submit">Draw</button>
-          <button type="button" id="reset-button">Reset</button>
-        </div>
-        <div id="hide-overlay-button">
-          <svg class="arrow up-left" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24">
-            <path d="M6 18l-6-6 6-6" fill="none" stroke="#000" stroke-width="2"/>
+    <form id="info-form" class="hide">
+      <table>
+        <tr>
+          <td>Iterations</td>
+          <td id="iterations">0</td>
+        </tr>
+        <tr>
+          <td>Radius</td>
+          <td>
+            <input type="number" step="any" id="radius" value="" />
+          </td>
+        </tr>
+        <tr>
+          <td>Center real</td>
+          <td>
+            <input type="number" step="any" id="real" value="" />
+          </td>
+        </tr>
+        <tr>
+          <td>Center imaginary</td>
+          <td>
+            <input type="number" step="any" id="imaginary" value="" />
+          </td>
+        </tr>
+        <tr class="advanced">
+          <td>Iterations per tick</td>
+          <td>
+            <input
+              type="number"
+              step="1"
+              id="iteration-amount"
+              value=""
+              min="1"
+            />
+          </td>
+        </tr>
+        <tr class="advanced">
+          <td>Threads</td>
+          <td>
+            <input type="number" step="1" id="threads" value="" min="1" />
+          </td>
+        </tr>
+        <tr class="advanced">
+          <td>Debounce ms</td>
+          <td>
+            <input type="number" step="1" id="debounce-time" value="" min="0" />
+          </td>
+        </tr>
+        <tr class="advanced">
+          <td>Fps</td>
+          <td>
+            <input type="number" step="1" id="fps" value="" min="0" />
+          </td>
+        </tr>
+        <tr class="advanced">
+          <td>Color scheme</td>
+          <td>
+            <select id="color-scheme">
+              <option value="0">Default</option>
+              <option value="1">Sqrt</option>
+              <option value="2">Sqrt Sqrt</option>
+              <option value="3">Rgb</option>
+              <option value="4">Rgb Sqrt</option>
+            </select>
+          </td>
+        </tr>
+      </table>
+      <div class="button-container">
+        <div id="show-advanced-button">
+          <svg
+            class="arrow down"
+            xmlns="http://www.w3.org/2000/svg"
+            width="14"
+            height="7"
+            viewBox="0 0 14 7"
+          >
+            <path
+              d="M 0 0 7 7 14 0"
+              fill="none"
+              stroke="#000"
+              stroke-width="2"
+            />
           </svg>
         </div>
-      </form>
-    </div>
+        <button type="submit">Draw</button>
+        <button type="button" id="reset-button">Reset</button>
+      </div>
+      <div id="hide-overlay-button">
+        <svg
+          class="arrow up-left"
+          xmlns="http://www.w3.org/2000/svg"
+          width="14"
+          height="7"
+          viewBox="0 0 14 7"
+        >
+          <path d="M 0 0 7 7 14 0" fill="none" stroke="#000" stroke-width="2" />
+        </svg>
+      </div>
+    </form>
     <footer>
       <div id="show-overlay-button">
-          <svg class="arrow down-right" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24">
-            <path d="M16 18l-6-6 6-6" fill="none" stroke="#000" stroke-width="2"/>
-          </svg>
+        <svg
+          class="arrow down-right"
+          xmlns="http://www.w3.org/2000/svg"
+          width="14"
+          height="7"
+          viewBox="0 0 14 7"
+        >
+          <path d="M 0 0 7 7 14 0" fill="none" stroke="#000" stroke-width="2" />
+        </svg>
       </div>
       <p>
         Made by Dennis. Code on
@@ -121,12 +166,11 @@
       flex-direction: row;
       gap: 10px;
       margin-top: 5px;
+      margin-left: 4px;
     }
 
     #show-overlay-button,
     #hide-overlay-button {
-      width: 21px;
-      height: 17px;
       padding: 10px;
       cursor: pointer;
       border-radius: 5px;
@@ -142,6 +186,10 @@
       bottom: 0px;
       right: 0px;
     }
+    #show-advanced-button {
+      box-sizing: border-box;
+      cursor: pointer;
+    }
 
     .bar {
       width: 100%;
@@ -154,12 +202,19 @@
       stroke-width: 2px;
       fill: none;
       stroke: black;
+      transform-origin: center;
     }
     .up-left {
-      transform: rotate(45deg);
+      transform: rotate(135deg);
+    }
+    .up {
+      transform: rotate(180deg);
     }
     .down-right {
-      transform: rotate(225deg);
+      transform: rotate(315deg);
+    }
+    .hide .advanced {
+      display: none;
     }
   </style>
   <script src="./src/index.js" type="module"></script>

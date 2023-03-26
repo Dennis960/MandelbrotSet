@@ -12,6 +12,12 @@ export class NumberInput {
    */
   htmlElement;
 
+  /**
+   * Callback for when the value changes
+   * @type {(number) => void}
+   */
+  onChange;
+
   constructor(elementId, defaultValue = 0) {
     this.htmlElement = $(elementId);
     const urlValue = loadKey(elementId);
@@ -36,6 +42,7 @@ export class NumberInput {
    * @param {number} newValue
    */
   set value(newValue) {
+    if (this.onChange) onChange(newValue);
     this.htmlElement.value = newValue;
     putKey(this.htmlElement.id, newValue);
   }

@@ -10,12 +10,16 @@ const radiusInput = new NumberInput("radius", 2);
 const realInput = new NumberInput("real", 0);
 const imaginaryInput = new NumberInput("imaginary", 0);
 const iterationAmountInput = new NumberInput("iteration-amount", 10);
+const threadsInput = new NumberInput("threads", 1);
+const debounceTimeInput = new NumberInput("debounce-time", 600);
+const fpsInput = new NumberInput("fps", 60);
 const colorSchemeSelect = new NumberInput("color-scheme", 0);
 
 // html elements
 const iterationsLabel = $("iterations");
 const infoForm = $("info-form");
 const hideOverlayButton = $("hide-overlay-button");
+const showAdvancedButton = $("show-advanced-button");
 const resetButton = $("reset-button");
 const showOverlayButton = $("show-overlay-button");
 
@@ -40,14 +44,11 @@ let imgData;
 const mandelbrotCoordSystem = new CoordSystem();
 let lastMandelbrotCoordSystem = null;
 
-let transformationDebounceTime = 600;
 let transformationDebounceTimeout = null;
 
 let lastDistance;
 let lastTouchPosition;
 let lastMousePosition;
-
-let hasIterationWorkerStarted = false;
 
 function loadMandelbrotCoordsFromForm() {
   canvas.width = window.innerWidth;
@@ -73,71 +74,109 @@ function resetMandelbrot() {
   colorSchemeSelect.value = 0;
 }
 
-/**
- * @param {ArrayBufferLike} colorListBuffer
- */
-function drawMandelbrot(colorListBuffer) {
-  if (colorListBuffer.byteLength - canvas.width * canvas.height * 4 !== 0) {
-    // buffer size does not match canvas size
-    return;
+function requestAllWorkers() {
+  for (let i = 0; i < workerList.length; i++) {
+    const iterationWorker = workerList[i];
+    iterationWorker.postMessage({
+      command: "request",
+      colorScheme: colorSchemeSelect.value,
+    });
   }
+}
+
+/**
+ * @type {ArrayBuffer[]}
+ */
+let colorLists = [];
+let colorList = new Uint8ClampedArray();
+
+function drawMandelbrot() {
   if (transformationDebounceTimeout) return;
-  imgData = new ImageData(
-    new Uint8ClampedArray(colorListBuffer),
-    canvas.width,
-    canvas.height
-  );
+  if (colorList.byteLength !== canvas.width * canvas.height * 4) {
+    console.log("resize");
+    // update color list length
+    colorList = new Uint8ClampedArray(canvas.width * canvas.height * 4);
+  }
+
+  let offset = 0;
+  for (const list of colorLists) {
+    if (list) {
+      colorList.set(new Uint8ClampedArray(list), offset);
+      offset += list.byteLength;
+    }
+  }
+
+  imgData = new ImageData(colorList, canvas.width, canvas.height);
   ctx.putImageData(imgData, 0, 0);
 }
 
-const iterationWorker = new Worker("./src/iteration-worker.js", {
-  type: "module",
-});
-
-iterationWorker.onmessage = (event) => {
-  hasIterationWorkerStarted = true;
-  iterationsLabel.innerHTML = event.data.currentIteration;
-  drawMandelbrot(event.data.colorListBuffer);
-  requestAnimationFrame(() => {
-    if (transformationDebounceTimeout) return;
-    requestWorkerData();
-  });
-};
-
-iterationWorker.addEventListener("error", (error) => {
-  console.error(error);
-});
-iterationWorker.addEventListener("messageerror", (error) => {
-  console.error(error);
-});
-
-function requestWorkerData() {
-  iterationWorker.postMessage({
-    command: "request",
-    colorScheme: colorSchemeSelect.value,
-  });
+/**
+ * @param {ArrayBuffer} colorListBuffer
+ * @param {number} iterationWorkerIndex
+ */
+function addColorList(colorListBuffer, iterationWorkerIndex) {
+  colorLists[iterationWorkerIndex] = colorListBuffer;
+  drawMandelbrot();
+  const maxIteration = Math.max(...iterations);
+  const minIteration = Math.min(...iterations);
+  iterationsLabel.innerHTML = `${minIteration} - ${maxIteration} --- Diff: ${
+    maxIteration - minIteration
+  }`;
 }
 
-function restartIterationWorker() {
-  const mandelbrotCoords = [
-    mandelbrotCoordSystem.x,
-    mandelbrotCoordSystem.y,
-    mandelbrotCoordSystem.scale,
-  ];
+/**
+ * @type {Worker[]}
+ */
+const workerList = [];
 
-  iterationWorker.postMessage({
-    canvasSize: [canvas.width, canvas.height],
-    mandelbrotCoords: mandelbrotCoords,
-    iterationsPerTick: iterationAmountInput.value,
-    command: "start",
-  });
+const iterations = [];
 
-  // quickfix to restart every 500 ms until event was received
-  if (!hasIterationWorkerStarted) {
-    new Promise((resolve) => setTimeout(resolve, 500)).then(() => {
-      if (!hasIterationWorkerStarted) {
-        restartIterationWorker();
-      }
+/**
+ *
+ * @param {number} amount
+ */
+function initWorkers(amount) {
+  // remove unused workers
+  for (let i = amount; i < workerList.length; i++) {
+    workerList[i].terminate();
+  }
+  workerList.length = Math.min(amount, workerList.length);
+  // add missing workers
+  for (let i = workerList.length; i < amount; i++) {
+    const iterationWorker = new Worker("./src/iteration-worker.js", {
+      type: "module",
+    });
+    workerList.push(iterationWorker);
+
+    iterationWorker.onmessage = (event) => {
+      iterations[i] = event.data.currentIteration;
+      addColorList(event.data.colorListBuffer, i);
+    };
+
+    iterationWorker.addEventListener("error", (error) => {
+      console.error(error);
+    });
+  }
+  iterations.length = 0;
+}
+function restartIterationWorkers() {
+  if (workerList.length !== threadsInput.value) {
+    initWorkers(threadsInput.value);
+  }
+  // clear list
+  colorLists.length = 0;
+  for (let i = 0; i < workerList.length; i++) {
+    const iterationWorker = workerList[i];
+    const mandelbrotCoords = [
+      mandelbrotCoordSystem.x,
+      mandelbrotCoordSystem.y - (canvas.height / workerList.length) * i,
+      mandelbrotCoordSystem.scale,
+    ];
+    iterationWorker.postMessage({
+      canvasSize: [canvas.width, Math.floor(canvas.height / workerList.length)],
+      mandelbrotCoords: mandelbrotCoords,
+      iterationsPerTick: iterationAmountInput.value,
+      command: "start",
     });
   }
 }
@@ -148,14 +187,18 @@ function onTransformation() {
   } else {
     addCurrentUrlToHistory();
     lastMandelbrotCoordSystem = mandelbrotCoordSystem.clone();
-    iterationWorker.postMessage({
-      command: "stop",
-    });
+    if (debounceTimeInput.value != 0) {
+      for (const iterationWorker of workerList) {
+        iterationWorker.postMessage({
+          command: "stop",
+        });
+      }
+    }
   }
   transformationDebounceTimeout = setTimeout(() => {
-    restartIterationWorker();
+    restartIterationWorkers();
     transformationDebounceTimeout = null;
-  }, transformationDebounceTime);
+  }, debounceTimeInput.value);
 
   if (!imgData) {
     // no need to draw if there is no image data
@@ -244,7 +287,6 @@ canvas.addEventListener("touchmove", (event) => {
         Math.pow(touch1.clientY - touch2.clientY, 2)
     );
     if (lastDistance) {
-      transformationDebounceTime = 300;
       onMove([
         lastTouchPosition[0] - touchPosition[0],
         lastTouchPosition[1] - touchPosition[1],
@@ -283,19 +325,28 @@ canvas.addEventListener("mousedown", (event) => {
 canvas.addEventListener("mousemove", (event) => {
   // check if mouse is down
   if (event.buttons === 1) {
-    onMove([
-      lastMousePosition[0] - event.clientX,
-      lastMousePosition[1] - event.clientY,
-    ]);
-    lastMousePosition = [event.clientX, event.clientY];
+    const distance = Math.sqrt(
+      Math.pow(event.clientX - lastMousePosition[0], 2) +
+        Math.pow(event.clientY - lastMousePosition[1], 2)
+    );
+    if (distance > 30) {
+      onMove([
+        lastMousePosition[0] - event.clientX,
+        lastMousePosition[1] - event.clientY,
+      ]);
+      lastMousePosition = [event.clientX, event.clientY];
+    }
   }
 });
 
-infoForm.addEventListener("submit", (event) => {
-  event.preventDefault();
-  loadMandelbrotCoordsFromForm();
-  restartIterationWorker();
-});
+infoForm.addEventListener(
+  "submit",
+  (/** @type {{ preventDefault: () => void; }} */ event) => {
+    event.preventDefault();
+    loadMandelbrotCoordsFromForm();
+    restartIterationWorkers();
+  }
+);
 [
   "mousedown",
   "touchstart",
@@ -304,9 +355,12 @@ infoForm.addEventListener("submit", (event) => {
   "mousemove",
   "touchend",
 ].forEach((event) => {
-  infoForm.addEventListener(event, (event) => {
-    event.stopPropagation();
-  });
+  infoForm.addEventListener(
+    event,
+    (/** @type {{ stopPropagation: () => void; }} */ event) => {
+      event.stopPropagation();
+    }
+  );
 });
 
 hideOverlayButton.addEventListener("click", () => {
@@ -321,8 +375,35 @@ showOverlayButton.addEventListener("click", () => {
 
 resetButton.addEventListener("click", () => {
   resetMandelbrot();
-  restartIterationWorker();
+  restartIterationWorkers();
 });
 
+showAdvancedButton.addEventListener("click", () => {
+  if (infoForm.classList.contains("hide")) {
+    infoForm.classList.remove("hide");
+    showAdvancedButton.style.transform = "rotate(180deg)";
+  } else {
+    infoForm.classList.add("hide");
+    showAdvancedButton.style.transform = "rotate(0deg)";
+  }
+});
+let requestInterval;
+
+/**
+ * @param {number} fps
+ */
+function restartRequestInterval(fps) {
+  if (requestInterval) clearInterval(requestInterval);
+  requestInterval = setInterval(() => {
+    requestAllWorkers();
+  }, 1000 / fps);
+}
+
+fpsInput.onChange = (/** @type {number} */ fps) => {
+  restartRequestInterval(fps);
+};
+
+initWorkers(threadsInput.value);
+restartRequestInterval(fpsInput.value);
 loadMandelbrotCoordsFromForm();
-restartIterationWorker();
+restartIterationWorkers();
