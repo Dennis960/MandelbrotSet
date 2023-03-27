@@ -6,7 +6,6 @@ import { $ } from "./query.js";
 import { addCurrentUrlToHistory } from "./url-state.js";
 
 const maxNumberOfThreads = navigator.hardwareConcurrency || 1;
-const defaultDebounceTime = maxNumberOfThreads ? 0 : 600;
 
 // html inputs
 const radiusInput = new NumberInput("radius", 2);
@@ -15,7 +14,7 @@ const imaginaryInput = new NumberInput("imaginary", 0);
 const maxIterationsInput = new NumberInput("max-iterations", 0);
 const iterationAmountInput = new NumberInput("iteration-amount", 50);
 const threadsInput = new NumberInput("threads", maxNumberOfThreads);
-const debounceTimeInput = new NumberInput("debounce-time", defaultDebounceTime);
+const debounceTimeInput = new NumberInput("debounce-time", 600);
 const fpsInput = new NumberInput("fps", 60);
 const resolutionInput = new NumberInput("resolution", 1);
 const colorSchemeSelect = new NumberInput("color-scheme", 0);
@@ -237,6 +236,8 @@ function restartIterationWorkers() {
     iterations[i] = 0;
     startWorker(i);
   }
+  // clear color list
+  colorLists.length = 0;
 }
 
 function onTransformation() {
