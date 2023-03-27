@@ -12,6 +12,7 @@ const defaultDebounceTime = maxNumberOfThreads ? 0 : 600;
 const radiusInput = new NumberInput("radius", 2);
 const realInput = new NumberInput("real", 0);
 const imaginaryInput = new NumberInput("imaginary", 0);
+const maxIterationsInput = new NumberInput("max-iterations", 0);
 const iterationAmountInput = new NumberInput("iteration-amount", 50);
 const threadsInput = new NumberInput("threads", maxNumberOfThreads);
 const debounceTimeInput = new NumberInput("debounce-time", defaultDebounceTime);
@@ -61,13 +62,15 @@ let colorLists = [];
 let colorList = new Uint8ClampedArray();
 
 /**
- * @type {{worker: Worker, uid: number, hasPostedMessage: boolean}[]}
+ * @type {{worker: Worker, uid: number, status: number}[]}
  */
 const workerList = [];
 
 let currentWorkerId = 0;
 
 const iterations = [];
+
+let maxIterations = 0;
 
 function loadMandelbrotCoordsFromForm() {
   canvas.width = window.innerWidth * resolutionInput.value;
@@ -98,6 +101,7 @@ function resetMandelbrot() {
 function requestAllWorkers() {
   for (let i = 0; i < workerList.length; i++) {
     const iterationWorker = workerList[i].worker;
+    if (workerList[i].status === 2) continue;
     iterationWorker.postMessage({
       command: "request",
       colorScheme: colorSchemeSelect.value,
@@ -135,12 +139,11 @@ function drawMandelbrot() {
 function addColorList(colorListBuffer, iterationWorkerIndex) {
   colorLists[iterationWorkerIndex] = colorListBuffer;
   drawMandelbrot();
-  const maxIteration = Math.max(...iterations);
-  const minIteration = Math.min(...iterations);
-  if (maxIteration == minIteration) {
-    iterationsLabel.innerHTML = maxIteration;
-  } else {
-    iterationsLabel.innerHTML = `${minIteration} - ${maxIteration}`;
+  const avgIteration =
+    iterations.reduce((a, b) => a + b, 0) / iterations.length;
+  iterationsLabel.innerHTML = Math.floor(avgIteration);
+  if (maxIterationsInput.value != -1) {
+    iterationsLabel.innerHTML += ` / ${maxIterations}`;
   }
 }
 
@@ -162,14 +165,18 @@ function initWorkers(amount) {
     workerList.push({
       worker: iterationWorker,
       uid: currentWorkerId++,
-      hasPostedMessage: false,
+      status: 0,
     });
     iterationWorker.onmessage = (event) => {
       if (event.data.command === "started") {
-        workerList[i].hasPostedMessage = true;
+        workerList[i].status = 1;
       } else {
         iterations[i] = event.data.currentIteration;
         addColorList(event.data.colorListBuffer, i);
+        if (event.data.currentIteration === maxIterations) {
+          workerList[i].status = 2;
+          console.log(iterations);
+        }
       }
     };
 
@@ -192,10 +199,19 @@ async function startWorker(i) {
     mandelbrotCoordSystem.y - (canvas.height / workerList.length) * i,
     mandelbrotCoordSystem.scale,
   ];
+  maxIterations = maxIterationsInput.value;
+  if (maxIterationsInput.value == -1) {
+    maxIterations = 0;
+  } else if (maxIterationsInput.value == 0) {
+    maxIterations = 50 + Math.log10(4 / Math.abs(2 * radiusInput.value)) ** 5;
+  }
+  maxIterations = Math.floor(maxIterations);
+
   iterationWorker.postMessage({
     canvasSize: [canvas.width, Math.floor(canvas.height / workerList.length)],
     mandelbrotCoords: mandelbrotCoords,
     iterationsPerTick: iterationAmountInput.value,
+    maxIterations: maxIterations,
     command: "start",
   });
 
@@ -203,10 +219,7 @@ async function startWorker(i) {
   new Promise((resolve) => {
     setTimeout(resolve, 500);
   }).then(() => {
-    if (
-      !workerList[i].hasPostedMessage &&
-      workerList[i].uid >= workerList[0].uid
-    ) {
+    if (!workerList[i].status && workerList[i].uid >= workerList[0].uid) {
       console.log(
         `worker ${i} with uid ${workerList[i].uid} did not respond, restarting`
       );
@@ -222,6 +235,7 @@ function restartIterationWorkers() {
   }
   // clear list
   for (let i = 0; i < workerList.length; i++) {
+    iterations[i] = 0;
     startWorker(i);
   }
 }
