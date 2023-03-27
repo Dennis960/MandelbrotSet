@@ -175,7 +175,6 @@ function initWorkers(amount) {
         addColorList(event.data.colorListBuffer, i);
         if (event.data.currentIteration === maxIterations) {
           workerList[i].status = 2;
-          console.log(iterations);
         }
       }
     };
