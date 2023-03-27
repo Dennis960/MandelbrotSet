@@ -16,6 +16,7 @@ const iterationAmountInput = new NumberInput("iteration-amount", 50);
 const threadsInput = new NumberInput("threads", maxNumberOfThreads);
 const debounceTimeInput = new NumberInput("debounce-time", defaultDebounceTime);
 const fpsInput = new NumberInput("fps", 60);
+const resolutionInput = new NumberInput("resolution", 1);
 const colorSchemeSelect = new NumberInput("color-scheme", 0);
 
 // html elements
@@ -69,8 +70,10 @@ let currentWorkerId = 0;
 const iterations = [];
 
 function loadMandelbrotCoordsFromForm() {
-  canvas.width = window.innerWidth;
-  canvas.height = window.innerHeight;
+  canvas.width = window.innerWidth * resolutionInput.value;
+  canvas.height = window.innerHeight * resolutionInput.value;
+  canvas.style.width = window.innerWidth + "px";
+  canvas.style.height = window.innerHeight + "px";
   mandelbrotCoordSystem.scale =
     Math.min(canvas.width, canvas.height) / 2 / radiusInput.value;
   mandelbrotCoordSystem.x =
@@ -80,8 +83,8 @@ function loadMandelbrotCoordsFromForm() {
 }
 
 function resetMandelbrot() {
-  canvas.width = window.innerWidth;
-  canvas.height = window.innerHeight;
+  canvas.width = window.innerWidth * resolutionInput.value;
+  canvas.height = window.innerHeight * resolutionInput.value;
   mandelbrotCoordSystem.x = canvas.width / 2;
   mandelbrotCoordSystem.y = canvas.height / 2;
   mandelbrotCoordSystem.scale = Math.min(canvas.width, canvas.height) / 4;
@@ -277,9 +280,12 @@ function onMove(deltaPosition) {
   /**
    * @type {[number, number]}
    */
-  let translate = [-deltaPosition[0], -deltaPosition[1]];
+  let scaledTranslate = [
+    -deltaPosition[0] * resolutionInput.value,
+    -deltaPosition[1] * resolutionInput.value,
+  ];
 
-  mandelbrotCoordSystem.moveOriginRelativeToViewport(...translate);
+  mandelbrotCoordSystem.moveOriginRelativeToViewport(...scaledTranslate);
   [realInput.value, imaginaryInput.value] = mandelbrotCoordSystem.fromViewport(
     canvas.width / 2,
     canvas.height / 2
@@ -295,8 +301,16 @@ function onMove(deltaPosition) {
 function onZoom(eventPosition, deltaZoom) {
   const zoomFactor = Math.pow(1.001, -deltaZoom);
 
+  /**
+   * @type {[number, number]}
+   */
+  const scaledPosition = [
+    eventPosition[0] * resolutionInput.value,
+    eventPosition[1] * resolutionInput.value,
+  ];
+
   // scale
-  mandelbrotCoordSystem.scaleAtViewportPosition(zoomFactor, ...eventPosition);
+  mandelbrotCoordSystem.scaleAtViewportPosition(zoomFactor, ...scaledPosition);
 
   const spanX = mandelbrotCoordSystem.fromViewportDistance(canvas.width);
   const spanY = mandelbrotCoordSystem.fromViewportDistance(canvas.height);
