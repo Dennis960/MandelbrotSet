@@ -26,6 +26,7 @@ const hideOverlayButton = $("hide-overlay-button");
 const showAdvancedButton = $("show-advanced-button");
 const resetButton = $("reset-button");
 const showOverlayButton = $("show-overlay-button");
+const tooltip = $("tooltip");
 
 /**
  * @type {HTMLCanvasElement}
@@ -456,6 +457,46 @@ showAdvancedButton.addEventListener("click", () => {
     infoForm.classList.add("hide");
     showAdvancedButton.style.transform = "rotate(0deg)";
   }
+});
+
+/**
+ * @param {number} posX
+ * @param {number} posY
+ * @param {string} text
+ */
+function showTooltip(posX, posY, text) {
+  tooltip.classList.remove("hidden");
+  tooltip.style.top = `${posY}px`;
+  tooltip.style.left = `${posX}px`;
+  tooltip.innerHTML = text;
+}
+
+let tooltipTimeout = null;
+document.querySelectorAll(".question").forEach((questionMark) => {
+  const questionMarkText = questionMark.getAttribute("tooltip") ?? "";
+  questionMark.addEventListener("click", () => {
+    // open tooltip for 5 seconds
+    const rect = questionMark.getBoundingClientRect();
+    showTooltip(rect.left + 20, rect.top + 20, questionMarkText);
+
+    if (tooltipTimeout) clearTimeout(tooltipTimeout);
+    tooltipTimeout = setTimeout(() => {
+      tooltip.classList.add("hidden");
+    }, 5000);
+  });
+  questionMark.addEventListener("mouseover", () => {
+    console.log("hover");
+    if (tooltip.classList.contains("hidden")) {
+      tooltip.classList.remove("hidden");
+    }
+
+    // set tooltip position to question mark
+    const rect = questionMark.getBoundingClientRect();
+    showTooltip(rect.left + 20, rect.top + 20, questionMarkText);
+  });
+  questionMark.addEventListener("mouseout", () => {
+    tooltip.classList.add("hidden");
+  });
 });
 
 let requestInterval;

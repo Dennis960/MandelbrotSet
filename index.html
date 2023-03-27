@@ -13,28 +13,68 @@
     <form id="info-form" class="hide">
       <table>
         <tr>
+          <td>
+            <div
+              class="question"
+              tooltip="Shows the number of iterations / max iterations. If max iterations is set to -1, only shows the number of iterations. The number of iterations is the average of the iterations for each worker."
+            >
+              ?
+            </div>
+          </td>
           <td>Iterations</td>
           <td id="iterations">0</td>
         </tr>
         <tr>
+          <td>
+            <div
+              class="question"
+              tooltip="Sets the mandelbrot zoom. The radius is the range of the imaginary or the real axis depending on the aspect ratio of the canvas. If the canvas is wider, the imaginary axis is used, else the real axis."
+            >
+              ?
+            </div>
+          </td>
           <td>Radius</td>
           <td>
             <input type="number" step="any" id="radius" value="" />
           </td>
         </tr>
         <tr>
+          <td>
+            <div
+              class="question"
+              tooltip="Sets the real center of the mandelbrot. The center is the point where the imaginary and real axis intersect. The real axis is the x axis. The imaginary axis is the y axis. The mandelbrot center is placed onto the canvas center."
+            >
+              ?
+            </div>
+          </td>
           <td>Center real</td>
           <td>
             <input type="number" step="any" id="real" value="" />
           </td>
         </tr>
         <tr>
+          <td>
+            <div
+              class="question"
+              tooltip="Sets the imaginary center of the mandelbrot. The center is the point where the imaginary and real axis intersect. The real axis is the x axis. The imaginary axis is the y axis. The mandelbrot center is placed onto the canvas center."
+            >
+              ?
+            </div>
+          </td>
           <td>Center imaginary</td>
           <td>
             <input type="number" step="any" id="imaginary" value="" />
           </td>
         </tr>
         <tr class="advanced">
+          <td>
+            <div
+              class="question"
+              tooltip="Sets the maximum number of iterations. If set to -1, the number of iterations is not limited. If set to 0, the number of iterations is calculated with <br><code>maxIterations = 50 + Math.log10(4 / Math.abs(2 * radiusInput.value)) ** 5<code/>"
+            >
+              ?
+            </div>
+          </td>
           <td>Max iterations</td>
           <td>
             <input
@@ -47,6 +87,14 @@
           </td>
         </tr>
         <tr class="advanced">
+          <td>
+            <div
+              class="question"
+              tooltip="Sets the number of iterations per tick. One tick happens each update cycle. The speed depends on the web worker and the browser."
+            >
+              ?
+            </div>
+          </td>
           <td>Iterations per tick</td>
           <td>
             <input
@@ -59,24 +107,59 @@
           </td>
         </tr>
         <tr class="advanced">
+          <td>
+            <div
+              class="question"
+              tooltip="Sets the number of web workers. The number of threads should be equal to the number of available cpu cores. This property is set automatically if the browser supports the navigator.hardwareConcurrency property."
+            >
+              ?
+            </div>
+          </td>
           <td>Threads</td>
           <td>
             <input type="number" step="1" id="threads" value="" min="1" />
           </td>
         </tr>
         <tr class="advanced">
+          <td>
+            <div
+              class="question"
+              tooltip="Sets the debounce time in milliseconds. The debounce time is the time between the last mouse/touch movement and the update of the mandelbrot.
+            "
+            >
+              ?
+            </div>
+          </td>
           <td>Debounce ms</td>
           <td>
             <input type="number" step="1" id="debounce-time" value="" min="0" />
           </td>
         </tr>
         <tr class="advanced">
+          <td>
+            <div
+              class="question"
+              tooltip="Sets the framerate at which the mandelbrot is drawn. This does not affect the calculation speed.
+                        "
+            >
+              ?
+            </div>
+          </td>
           <td>Fps</td>
           <td>
             <input type="number" step="1" id="fps" value="" min="0" />
           </td>
         </tr>
         <tr class="advanced">
+          <td>
+            <div
+              class="question"
+              tooltip="Sets the resolution of the mandelbrot. The resolution is the number of pixels per unit. For best results, the resolution should be a power of 2.
+            "
+            >
+              ?
+            </div>
+          </td>
           <td>Resolution</td>
           <td>
             <input
@@ -89,6 +172,20 @@
           </td>
         </tr>
         <tr class="advanced">
+          <td>
+            <div
+              class="question"
+              tooltip="Sets the color scheme.
+              <br><b>Default</b> maps each pixel to a gray color based on the ratio of the number of iterations needed to escape the set to the current maximum number of iterations.
+            <br><b>Sqrt</b> calculates the square root of the deafult value  <br><code>Math.sqrt(iterations / maxIterations)</code>.
+            <br><b>Sqrt</b> Sqrt calculates the square root of the square root of the deafult value <br><code>Math.sqrt(Math.sqrt(iterations / maxIterations))</code>.
+            <br><b>Rgb</b> uses the hsv color space to map each value to part of the color spectrum.
+            <br><b>Rgb</b> Sqrt works the same as rgb but uses the square root of the default value.
+            "
+            >
+              ?
+            </div>
+          </td>
           <td>Color scheme</td>
           <td>
             <select id="color-scheme">
@@ -150,6 +247,11 @@
         <a href="https://github.com/Dennis960/MandelbrotSet">github</a>
       </p>
     </footer>
+    <div id="tooltip" class="hidden">
+      Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed consectetur,
+      nisl vel ultricies lacinia, nunc nisl aliquet nunc, vel tincidunt nunc
+      nisl eget nunc. Sed euismod, nunc vel aliquam
+    </div>
   </body>
   <style>
     body {
@@ -160,22 +262,24 @@
     }
     #info-form {
       position: fixed;
-      display: flex;
       padding: 10px;
       border-radius: 5px;
       top: 10px;
       left: 10px;
-      flex-direction: column;
-      align-items: start;
+      max-width: 80vw;
       background-color: white;
       scale: 0;
       transform-origin: top left;
       transition: scale 0.2s ease-in-out;
     }
     #info-form.visible {
-      display: flex;
       scale: 1;
     }
+
+    #info-form input {
+      width: 100%;
+    }
+
     footer {
       position: fixed;
       bottom: 0;
@@ -215,6 +319,18 @@
       cursor: pointer;
     }
 
+    #tooltip {
+      position: fixed;
+      width: 30vw;
+      border-radius: 5px;
+      padding: 10px;
+      background-color: white;
+      box-shadow: 0 0 10px 0 rgba(0, 0, 0, 0.5);
+    }
+    #tooltip.hidden {
+      display: none;
+    }
+
     .bar {
       width: 100%;
       height: 3px;
@@ -239,6 +355,16 @@
     }
     .hide .advanced {
       display: none;
+    }
+    .question {
+      color: blue;
+      border-radius: 100%;
+      font-size: 80%;
+      width: 1em;
+      height: 1em;
+      text-align: center;
+      border: 1px solid blue;
+      cursor: pointer;
     }
   </style>
   <script src="./src/index.js" type="module"></script>
