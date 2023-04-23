@@ -4,6 +4,8 @@ Developed as a project the an excercise at my University, this program is a Mand
 
 It uses the SIMD instructions and can optionally use Web Workers to render different parts of the image in parallel.
 
+A working example can be found [here](https://hoppingadventure.com/mandelbrot/)
+
 ![Mandelbrot](images/Mandelbrot.png)
 
 ## Usage
