@@ -4,6 +4,8 @@ Developed as a project the an excercise at my University, this program is a Mand
 
 It uses the SIMD instructions and can optionally use Web Workers to render different parts of the image in parallel.
 
+![Mandelbrot](images/Mandelbrot.png)
+
 ## Usage
 
 ### Installation
@@ -39,4 +41,4 @@ This project is free to use and modify. If you have any questions, feel free to 
 
 [Apache License 2.0](LICENSE)
 
-If you use this project, I would appreciate credit by linking to this repository but I don't require it.
+If you use this project, I would appreciate credit by linking to this repository but I don't require it. I don't have any experience with licenses, so if you have any questions, feel free to contact me.
