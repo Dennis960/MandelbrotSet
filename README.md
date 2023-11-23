@@ -1,4 +1,4 @@
-# One of the probably fastest Mandelbrot set renderers you can find on the Web.
+# One of the probably fastest Mandelbrot set renderers (w/o using the GPU) you can find on the Web.
 
 Developed as a project the an excercise at my University, this program is a Mandelbrot set renderer built with Node.js and WebAssembly.
 
